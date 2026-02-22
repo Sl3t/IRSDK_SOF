@@ -1,0 +1,19 @@
+{
+  "name": "irsdk-sof-bridge",
+  "version": "1.0.0",
+  "description": "Node.js bridge: reads iRacing IRSDK shared memory and exposes session data via WebSocket",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "node-irsdk": "^2.1.5",
+    "ws": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true,
+  "author": "IRSDK SOF Agent",
+  "license": "MIT"
+}

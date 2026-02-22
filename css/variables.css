@@ -1,0 +1,117 @@
+/* ==========================================================================
+   IRSDK SOF — Design Tokens (CSS Custom Properties)
+   ==========================================================================
+   Dark cockpit / SimHub telemetry HUD palette.
+   Every color, font, radius, and spacing value used across the app is
+   defined here so the entire theme can be re-skinned from one file.
+   ========================================================================== */
+
+:root {
+  /* ---------- Background Layers ----------------------------------------- */
+  --bg-primary:      #000000;   /* Full-black canvas — the "off" cockpit  */
+  --bg-card:         #0A0A0A;   /* Card / panel surface                   */
+  --bg-card-hover:   #141414;   /* Card hovered / focused                 */
+  --bg-input:        #0D0D0D;   /* Form input background                  */
+  --bg-sidebar:      #050505;   /* Navigation sidebar                     */
+  --bg-overlay:      rgba(0, 0, 0, 0.85); /* Modal / overlay backdrop     */
+
+  /* ---------- Borders --------------------------------------------------- */
+  --border:          #1E1E1E;   /* Default subtle border                  */
+  --border-hover:    #2A2A2A;   /* Border on hover                        */
+  --border-focus:    #00BFFF;   /* Input / card focus ring (cyan)         */
+
+  /* ---------- Text ------------------------------------------------------ */
+  --text-primary:    #FFFFFF;   /* High-emphasis text                     */
+  --text-secondary:  #808080;   /* Medium-emphasis labels                 */
+  --text-muted:      #4A4A4A;   /* Low-emphasis / disabled                */
+  --text-inverse:    #000000;   /* Text on bright badges                  */
+
+  /* ---------- Accent — Semantic Colors ---------------------------------- */
+  --accent-cyan:     #00BFFF;   /* Primary accent — links, focus, live    */
+  --accent-green:    #00FF00;   /* GO / positive / connected              */
+  --accent-red:      #FF0000;   /* NOGO / danger / disconnected           */
+  --accent-yellow:   #FFFF00;   /* Warning / caution / neutral            */
+  --accent-orange:   #FF8C00;   /* Mid-severity / warm                    */
+  --accent-purple:   #A855F7;   /* Tags, special highlights               */
+  --accent-blue:     #3B82F6;   /* Info / secondary action                */
+
+  /* ---------- Accent — Dimmed variants (for backgrounds, glows) --------- */
+  --accent-cyan-dim:   rgba(0, 191, 255, 0.12);
+  --accent-green-dim:  rgba(0, 255, 0, 0.10);
+  --accent-red-dim:    rgba(255, 0, 0, 0.10);
+  --accent-yellow-dim: rgba(255, 255, 0, 0.08);
+  --accent-orange-dim: rgba(255, 140, 0, 0.10);
+  --accent-purple-dim: rgba(168, 85, 247, 0.10);
+  --accent-blue-dim:   rgba(59, 130, 246, 0.10);
+
+  /* ---------- Typography ------------------------------------------------ */
+  --font-data:       'Roboto Mono', monospace;  /* Telemetry numbers       */
+  --font-display:    'Orbitron', sans-serif;     /* Headings / HUD titles  */
+  --font-body:       'Inter', sans-serif;        /* Body copy / UI labels  */
+
+  /* Font sizes — modular scale (1.250 ratio) */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  --text-5xl:  3rem;       /* 48px */
+
+  /* Font weights */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Line heights */
+  --leading-tight:   1.15;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.75;
+
+  /* ---------- Spacing --------------------------------------------------- */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* ---------- Border Radius --------------------------------------------- */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-full: 9999px;
+
+  /* ---------- Shadows & Glows ------------------------------------------- */
+  --shadow-card:       0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.8);
+  --glow-cyan:         0 0 12px rgba(0, 191, 255, 0.35);
+  --glow-green:        0 0 12px rgba(0, 255, 0, 0.35);
+  --glow-red:          0 0 12px rgba(255, 0, 0, 0.35);
+  --glow-yellow:       0 0 12px rgba(255, 255, 0, 0.30);
+
+  /* ---------- Layout ---------------------------------------------------- */
+  --sidebar-width:           240px;
+  --sidebar-width-collapsed: 60px;
+  --header-height:           56px;
+  --content-max-width:       1440px;
+  --bottom-nav-height:       56px;
+
+  /* ---------- Z-Index Scale --------------------------------------------- */
+  --z-base:    1;
+  --z-card:    10;
+  --z-sidebar: 100;
+  --z-header:  200;
+  --z-overlay: 500;
+  --z-modal:   1000;
+  --z-toast:   2000;
+
+  /* ---------- Transitions ----------------------------------------------- */
+  --transition-fast:   120ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+}

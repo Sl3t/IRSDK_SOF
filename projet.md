@@ -1,8 +1,11 @@
 # IRSDK SOF Agent — Plan de Projet Complet
 
-> **Version** : 2.0 — 2026-02-22
-> **Statut** : En attente de validation et compléments d'information
+> **Version** : 2.1 — 2026-02-22
+> **Statut** : EN DÉVELOPPEMENT
 > **Stack** : HTML / CSS / JS / PHP + Bridge Node.js (IRSDK)
+> **Serveur** : Laragon (PHP 8.x + Apache) sur SIM PC 1
+> **BDD** : Microsoft Access (.mdb) via ODBC
+> **Design** : Dark cockpit SimHub — palette validée
 
 ---
 
@@ -566,15 +569,17 @@ Le moteur produit un **score de 0 à 100%** basé sur des critères pondérés. 
 
 > Basé sur une approximation de la formule Elo/Glicko utilisée par iRacing.
 
-### F.6 — Seuils de recommandation
+### F.6 — Seuils de recommandation (configurables)
+
+Valeurs par défaut (modifiables dans Réglages) :
 
 | Score | Recommandation | Couleur |
 |:---:|:---:|:---:|
-| 75-100% | **GO** | 🟢 Vert |
-| 50-74% | **NEUTRE** — à votre appréciation | 🟡 Orange |
-| 0-49% | **NO-GO** | 🔴 Rouge |
+| 75-100% | **GO** | 🟢 Vert `#00FF00` |
+| 50-74% | **NEUTRE** — à votre appréciation | 🟡 Jaune `#FFFF00` |
+| 0-49% | **NO-GO** | 🔴 Rouge `#FF0000` |
 
-> **⚠️ QUESTION [F.6]** : Ces seuils vous conviennent ? Voulez-vous les ajuster ?
+> ✅ **VALIDÉ** : Seuils configurables dans la page Réglages (table `settings`, clés `threshold_go` et `threshold_nogo`).
 
 ---
 
@@ -757,28 +762,39 @@ Session détectée (IRSDK) → Liste de 24 pilotes
 
 | ID | Aspect | Description |
 |----|--------|-------------|
-| H.4.1 | **Thème général** | Dark mode racing |
-| H.4.2 | **Palette couleurs** | À définir |
-| H.4.3 | **Typographie** | Police racing/sport (ex: Rajdhani, Orbitron, Exo 2) |
+| H.4.1 | **Thème général** | Dark cockpit / telemetry HUD — style SimHub dashboard |
+| H.4.2 | **Palette couleurs** | ✅ VALIDÉ — voir détail ci-dessous |
+| H.4.3 | **Typographie** | Monospace technique : **Roboto Mono** (données), **Orbitron** (titres/chiffres) |
 | H.4.4 | **Animations** | Transitions fluides, glow sur données live, pulse sur GO/NOGO |
-| H.4.5 | **Responsive** | Mobile-first : tablette (prioritaire), téléphone, desktop |
-| H.4.6 | **Graphiques** | Chart.js ou ApexCharts |
-| H.4.7 | **Couleurs GO/NOGO** | Vert (GO) / Orange (NEUTRE) / Rouge (NOGO) — gradients |
+| H.4.5 | **Responsive** | ✅ VALIDÉ — Tous appareils : tablette + téléphone + desktop |
+| H.4.6 | **Graphiques** | ApexCharts (dark theme natif) |
+| H.4.7 | **Couleurs GO/NOGO** | Vert `#00FF00` (GO) / Jaune `#FFFF00` (NEUTRE) / Rouge `#FF0000` (NOGO) |
 
-> **⚠️ INFO ATTENDUE [H.4.2]** : Palette couleurs souhaitée ?
-> - (a) Noir / Rouge racing classique
-> - (b) Noir / Bleu iRacing
-> - (c) Noir / Vert néon cyberpunk
-> - (d) Noir / Orange McLaren
-> - (e) Autre — précisez
+#### H.4.2 — Palette couleurs validée (style SimHub cockpit)
 
-> **⚠️ QUESTION [H.4.5]** : Quel usage principal en responsive ?
-> - (a) Tablette posée à côté du sim (prioritaire)
-> - (b) Téléphone
-> - (c) Second écran PC
-> - (d) Tous les trois
+| Variable CSS | Couleur | Hex | Usage |
+|-------------|---------|-----|-------|
+| `--bg-primary` | Noir pur | `#000000` | Fond principal |
+| `--bg-card` | Noir léger | `#0A0A0A` | Fond des cartes/panneaux |
+| `--bg-card-hover` | Gris très sombre | `#141414` | Hover sur cartes |
+| `--border` | Gris sombre | `#1E1E1E` | Bordures de panneaux |
+| `--text-primary` | Blanc | `#FFFFFF` | Texte principal / données |
+| `--text-secondary` | Gris | `#808080` | Labels, texte secondaire |
+| `--text-muted` | Gris foncé | `#4A4A4A` | Texte désactivé |
+| `--accent-cyan` | Cyan | `#00BFFF` | Headers, titres de sections |
+| `--accent-green` | Vert vif | `#00FF00` | Positif, GO, gains, favorable |
+| `--accent-red` | Rouge | `#FF0000` | Négatif, NOGO, pertes, dangereux |
+| `--accent-yellow` | Jaune | `#FFFF00` | Attention, neutre, warnings |
+| `--accent-orange` | Orange | `#FF8C00` | Highlight, sélection active |
+| `--accent-purple` | Violet | `#A855F7` | Classe/catégorie accent 1 |
+| `--accent-blue` | Bleu | `#3B82F6` | Classe/catégorie accent 2 |
 
-> **⚠️ INFO ATTENDUE [H.4]** : Avez-vous des références visuelles ? Sites, apps, screenshots dont vous aimez le style ?
+**Principes de design :**
+- Zéro décoration inutile — tout est data
+- Color-coding par sens : vert = favorable, rouge = défavorable, jaune = attention
+- Très lisible en un coup d'oeil (éclairage faible, stress de course)
+- Layout dense, grille, pas d'espace perdu
+- Référence visuelle : dashboard SimHub racing telemetry
 
 ---
 
@@ -933,35 +949,33 @@ IRSDK_SOF/
 
 ---
 
-## K. Informations en attente
+## K. Décisions validées
 
-### Obligatoire (bloquant pour le développement)
+### Réponses reçues
 
-| Ref | Question | Votre réponse |
-|-----|----------|---------------|
-| **[A.4a]** | Serveur PHP local (WAMP/XAMPP/Laragon) + version PHP ? | ___________ |
-| **[A.4b]** | Node.js installé sur SIM PC 1 ? Version ? | ___________ |
-| **[D.1]** | Type de BDD "MDB" : MariaDB / MySQL / MongoDB / Access / Autre ? | ___________ |
-| **[D.2]** | Éléments de connexion BDD (host, port, base, user, pass) | ___________ |
-| **[I.1]** | Credentials OAuth2 iRacing disponibles ? | ___________ |
+| Ref | Question | Réponse |
+|-----|----------|---------|
+| **[A.4a]** | Serveur PHP | ✅ **Laragon** (léger, auto-config, PHP 8.x + Apache) |
+| **[A.4b]** | Node.js sur SIM PC 1 | ✅ **À installer** (v20 LTS recommandé) |
+| **[D.1]** | Type de BDD | ✅ **Microsoft Access (.mdb)** via ODBC PHP |
+| **[D.2]** | Connexion BDD | ✅ Fichier local `irsdk_sof.mdb` (pas de serveur, accès ODBC direct) |
+| **[I.1]** | OAuth2 iRacing | ⏳ **À demander** via https://support.iracing.com |
+| **[H.4.2]** | Palette couleurs | ✅ **Dark cockpit SimHub** (noir pur + cyan/vert/rouge/jaune) |
+| **[H.4.5]** | Responsive | ✅ **Tous appareils** (tablette + téléphone + desktop) |
+| **[H.4]** | Référence visuelle | ✅ **Dashboard SimHub** — cockpit telemetry HUD |
+| **[F.6]** | Seuils GO/NOGO | ✅ **Configurables** dans les réglages |
+| **[F.2]** | Critères de décision | ✅ Validés (8 critères pondérés) |
 
-### Important (influence le design)
+### En attente
 
-| Ref | Question | Votre réponse |
-|-----|----------|---------------|
-| **[H.4.2]** | Palette couleurs ? (noir/rouge, noir/bleu, néon, orange, autre) | ___________ |
-| **[H.4.5]** | Usage responsive prioritaire ? (tablette, mobile, desktop, tous) | ___________ |
-| **[H.4]** | Références visuelles / sites dont vous aimez le style ? | ___________ |
+| Ref | Question | Statut |
+|-----|----------|--------|
+| **[I.1]** | Credentials OAuth2 iRacing (client_id + client_secret) | À demander par l'utilisateur |
 
-### Optionnel (personnalisation fine)
-
-| Ref | Question | Votre réponse |
-|-----|----------|---------------|
-| **[F.6]** | Seuils GO/NOGO (75-50-0 par défaut) OK ? | ___________ |
-| **[F.2]** | Critères de décision et poids OK ? Modifications ? | ___________ |
+> **Note** : L'app peut être développée et testée sans les credentials OAuth2. L'authentification iRacing sera le dernier module à brancher.
 
 ---
 
-> **Version 2.0** — Mise à jour : architecture hybride (IRSDK + API REST), conditions de piste live, analyse approfondie des pilotes par circuit, workflow séries → sessions → analyse, score GO/NOGO en pourcentage avec détail des critères.
+> **Version 2.1** — Toutes les décisions d'architecture et de design validées. Développement lancé.
 >
 > Chaque section indexée (A.1, B.2.3, F.2.6, H.3.4, etc.) peut être référencée directement dans vos retours.

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iR SOF — iRacing Strength of Field Analyzer</title>
+  <meta name="description" content="Real-time iRacing SOF analysis and GO/NOGO decision engine">
+
+  <!-- ================================================================== -->
+  <!-- Google Fonts: Roboto Mono (telemetry), Orbitron (HUD), Inter (UI)  -->
+  <!-- ================================================================== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- ================================================================== -->
+  <!-- ApexCharts CDN — lightweight charting library                       -->
+  <!-- ================================================================== -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+
+  <!-- ================================================================== -->
+  <!-- Application CSS                                                     -->
+  <!-- ================================================================== -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages/series.css">
+  <link rel="stylesheet" href="css/pages/dashboard.css">
+  <link rel="stylesheet" href="css/pages/session.css">
+  <link rel="stylesheet" href="css/pages/driver.css">
+  <link rel="stylesheet" href="css/pages/profile.css">
+  <link rel="stylesheet" href="css/pages/history.css">
+  <link rel="stylesheet" href="css/pages/settings.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+
+  <!-- ================================================================== -->
+  <!-- Sidebar Navigation                                                  -->
+  <!-- Left rail on desktop (240px), bottom bar on mobile (56px)           -->
+  <!-- ================================================================== -->
+  <nav id="sidebar" class="sidebar" aria-label="Main navigation">
+
+    <!-- Brand / Logo -->
+    <div class="sidebar__brand">
+      <a href="#dashboard" class="sidebar__logo" aria-label="Home — Dashboard">
+        <span class="sidebar__logo-text">iR SOF</span>
+      </a>
+    </div>
+
+    <!-- Primary navigation links -->
+    <ul class="sidebar__nav" role="list">
+      <li>
+        <a href="#series" class="sidebar__link" data-route="series" aria-label="Series">
+          <span class="sidebar__icon" aria-hidden="true">&#9776;</span>
+          <span class="sidebar__label">Series</span>
+        </a>
+      </li>
+      <li>
+        <a href="#dashboard" class="sidebar__link" data-route="dashboard" aria-label="Dashboard">
+          <span class="sidebar__icon" aria-hidden="true">&#9673;</span>
+          <span class="sidebar__label">Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="#session" class="sidebar__link" data-route="session" aria-label="Session">
+          <span class="sidebar__icon" aria-hidden="true">&#9889;</span>
+          <span class="sidebar__label">Session</span>
+        </a>
+      </li>
+      <li>
+        <a href="#profile" class="sidebar__link" data-route="profile" aria-label="Profile">
+          <span class="sidebar__icon" aria-hidden="true">&#128100;</span>
+          <span class="sidebar__label">Profile</span>
+        </a>
+      </li>
+      <li>
+        <a href="#history" class="sidebar__link" data-route="history" aria-label="History">
+          <span class="sidebar__icon" aria-hidden="true">&#128202;</span>
+          <span class="sidebar__label">History</span>
+        </a>
+      </li>
+      <li>
+        <a href="#settings" class="sidebar__link" data-route="settings" aria-label="Settings">
+          <span class="sidebar__icon" aria-hidden="true">&#9881;</span>
+          <span class="sidebar__label">Settings</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Connection status indicators -->
+    <div class="sidebar__status">
+      <div class="sidebar__status-item" id="status-irsdk" title="IRSDK Bridge connection">
+        <span class="status-dot status-dot--disconnected" id="dot-irsdk"></span>
+        <span class="sidebar__status-label">IRSDK</span>
+      </div>
+      <div class="sidebar__status-item" id="status-api" title="API connection">
+        <span class="status-dot status-dot--disconnected" id="dot-api"></span>
+        <span class="sidebar__status-label">API</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================================================================== -->
+  <!-- Main Content Area                                                   -->
+  <!-- ================================================================== -->
+  <main id="main-content" class="main-content">
+    <div id="app" class="app-container">
+      <!-- Page content is rendered here by the SPA router -->
+    </div>
+  </main>
+
+  <!-- ================================================================== -->
+  <!-- Toast / Notification container (positioned fixed, top-right)       -->
+  <!-- ================================================================== -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ================================================================== -->
+  <!-- Application JavaScript                                              -->
+  <!-- Load order matters: utilities first, then engines, then app shell   -->
+  <!-- ================================================================== -->
+  <script src="js/utils/storage.js"></script>
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/sof-engine.js"></script>
+  <script src="js/decision-engine.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/websocket.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
