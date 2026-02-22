@@ -120,13 +120,44 @@
   <!-- Application JavaScript                                              -->
   <!-- Load order matters: utilities first, then engines, then app shell   -->
   <!-- ================================================================== -->
+  <!-- Utilities -->
   <script src="js/utils/storage.js"></script>
   <script src="js/utils/formatters.js"></script>
+
+  <!-- Engines -->
   <script src="js/sof-engine.js"></script>
   <script src="js/decision-engine.js"></script>
   <script src="js/charts.js"></script>
+
+  <!-- Data layer -->
   <script src="js/websocket.js"></script>
   <script src="js/api.js"></script>
+
+  <!-- Components -->
+  <script src="js/components/conditions-panel.js"></script>
+  <script src="js/components/sof-gauge.js"></script>
+  <script src="js/components/decision-panel.js"></script>
+  <script src="js/components/criteria-detail.js"></script>
+  <script src="js/components/irating-simulator.js"></script>
+  <script src="js/components/driver-grid.js"></script>
+  <script src="js/components/series-card.js"></script>
+  <script src="js/components/session-card.js"></script>
+  <script src="js/components/status-bar.js"></script>
+  <script src="js/components/driver-profile.js"></script>
+  <script src="js/components/irating-chart.js"></script>
+  <script src="js/components/field-summary.js"></script>
+  <script src="js/components/event-ticker.js"></script>
+
+  <!-- Page renderers -->
+  <script src="js/pages/dashboard-page.js"></script>
+  <script src="js/pages/series-page.js"></script>
+  <script src="js/pages/session-page.js"></script>
+  <script src="js/pages/driver-page.js"></script>
+  <script src="js/pages/profile-page.js"></script>
+  <script src="js/pages/history-page.js"></script>
+  <script src="js/pages/settings-page.js"></script>
+
+  <!-- App shell (must load last — bootstraps the SPA) -->
   <script src="js/app.js"></script>
 
 </body>

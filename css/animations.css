@@ -1,0 +1,231 @@
+/* ==========================================================================
+   IRSDK SOF — Animations & Keyframes
+   ==========================================================================
+   Dark cockpit / SimHub-style keyframe animations and utility classes.
+   Uses the design tokens defined in variables.css for colors and timing.
+   ========================================================================== */
+
+/* ==========================================================================
+   Keyframes
+   ========================================================================== */
+
+/**
+ * pulse-green — GO indicator pulse
+ * Oscillates a green glow outward for the GO recommendation state.
+ */
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.30);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(0, 255, 0, 0.60),
+                0 0 48px rgba(0, 255, 0, 0.20);
+  }
+}
+
+/**
+ * pulse-red — NOGO indicator pulse
+ * Oscillates a red glow outward for the NO-GO recommendation state.
+ */
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.30);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(255, 0, 0, 0.60),
+                0 0 48px rgba(255, 0, 0, 0.20);
+  }
+}
+
+/**
+ * pulse-yellow — NEUTRAL indicator pulse
+ * Oscillates a yellow glow for the NEUTRAL / caution state.
+ */
+@keyframes pulse-yellow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 255, 0, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.50),
+                0 0 40px rgba(255, 255, 0, 0.15);
+  }
+}
+
+/**
+ * glow-cyan — Live data subtle glow
+ * A gentle breathing glow used on live-updated elements (SOF, conditions).
+ */
+@keyframes glow-cyan {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(0, 191, 255, 0.20);
+    text-shadow: 0 0 4px rgba(0, 191, 255, 0.20);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(0, 191, 255, 0.45);
+    text-shadow: 0 0 10px rgba(0, 191, 255, 0.40);
+  }
+}
+
+/**
+ * fade-in — Page entrance animation
+ * Fades in and slides up slightly for a smooth page transition.
+ */
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * slide-up — Card entrance animation
+ * Slides up from below with a fade, intended for staggered card reveals.
+ */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * ticker-scroll — Event ticker new entry slide
+ * A new event entry slides in from the left with a brief highlight.
+ */
+@keyframes ticker-scroll {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/**
+ * spin — Loading spinner
+ * Standard 360-degree rotation for loading indicators.
+ */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+/**
+ * .animate-fade-in — Apply fade-in entrance to any element.
+ * Duration: 400ms with ease-out for a natural feel.
+ */
+.animate-fade-in {
+  animation: fade-in 400ms ease-out both;
+}
+
+/**
+ * .animate-slide-up — Apply slide-up entrance to any element.
+ * Duration: 500ms, ease-out. Combine with animation-delay for stagger.
+ *
+ * Stagger children using nth-child or inline --delay custom property:
+ *   .card:nth-child(1) { animation-delay: 0ms; }
+ *   .card:nth-child(2) { animation-delay: 60ms; }
+ *   .card:nth-child(3) { animation-delay: 120ms; }
+ */
+.animate-slide-up {
+  animation: slide-up 500ms ease-out both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* Stagger support: automatically delay cards in a grid */
+.animate-slide-up:nth-child(1)  { animation-delay:   0ms; }
+.animate-slide-up:nth-child(2)  { animation-delay:  60ms; }
+.animate-slide-up:nth-child(3)  { animation-delay: 120ms; }
+.animate-slide-up:nth-child(4)  { animation-delay: 180ms; }
+.animate-slide-up:nth-child(5)  { animation-delay: 240ms; }
+.animate-slide-up:nth-child(6)  { animation-delay: 300ms; }
+.animate-slide-up:nth-child(7)  { animation-delay: 360ms; }
+.animate-slide-up:nth-child(8)  { animation-delay: 420ms; }
+.animate-slide-up:nth-child(9)  { animation-delay: 480ms; }
+.animate-slide-up:nth-child(10) { animation-delay: 540ms; }
+
+/**
+ * .animate-pulse — Generic pulse animation (cyan glow by default).
+ * Override the animation-name for GO/NOGO colors:
+ *   .animate-pulse.pulse--go   { animation-name: pulse-green; }
+ *   .animate-pulse.pulse--nogo { animation-name: pulse-red; }
+ */
+.animate-pulse {
+  animation: glow-cyan 2s ease-in-out infinite;
+}
+
+.animate-pulse.pulse--go {
+  animation-name: pulse-green;
+}
+
+.animate-pulse.pulse--nogo {
+  animation-name: pulse-red;
+}
+
+.animate-pulse.pulse--neutral {
+  animation-name: pulse-yellow;
+}
+
+/**
+ * .transition-fast — 150ms transition on all animatable properties.
+ * Useful for hover effects on small elements (buttons, badges).
+ */
+.transition-fast {
+  transition: all 150ms ease;
+}
+
+/**
+ * .transition-normal — 300ms transition on all animatable properties.
+ * Standard transition speed for cards, panels, and form elements.
+ */
+.transition-normal {
+  transition: all 300ms ease;
+}
+
+/* ---------- Loading Spinner Utility ------------------------------------ */
+
+/**
+ * .spinner — A centered loading spinner using the spin keyframe.
+ * 32x32px circle with a cyan arc. Place inside any container.
+ */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-cyan);
+  border-radius: var(--radius-full);
+  animation: spin 800ms linear infinite;
+  margin: var(--spacing-lg) auto;
+}
+
+/* ---------- Ticker Entry Animation ------------------------------------- */
+
+/**
+ * .ticker-entry — Event ticker new entry with slide-in animation.
+ */
+.ticker-entry {
+  animation: ticker-scroll 350ms ease-out both;
+}

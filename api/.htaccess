@@ -1,0 +1,90 @@
+# ==============================================================================
+# IRSDK SOF Agent — Apache Configuration for /api/ directory
+# ==============================================================================
+# Enables mod_rewrite, sets CORS headers at the server level, and configures
+# PHP settings needed for ODBC/Access database connectivity.
+#
+# This file should be placed in the /api/ directory of the application.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Enable mod_rewrite
+# ------------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect requests without trailing slash if they match a directory
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Route /api/settings to /api/settings/index.php
+    RewriteRule ^settings/?$ settings/index.php [L,QSA]
+
+    # Route /api/iracing/auth to /api/iracing/auth.php
+    RewriteRule ^iracing/auth/?$ iracing/auth.php [L,QSA]
+
+    # Route /api/iracing/proxy to /api/iracing/proxy.php
+    RewriteRule ^iracing/proxy/?$ iracing/proxy.php [L,QSA]
+
+    # Route /api/iracing/cache to /api/iracing/cache.php
+    RewriteRule ^iracing/cache/?$ iracing/cache.php [L,QSA]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# CORS Headers — allow cross-origin requests from local development
+# ------------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Allow requests from any origin (restrict in production)
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header always set Access-Control-Max-Age "86400"
+
+    # Handle preflight OPTIONS requests at the server level
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=204,L]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# PHP settings for Access/ODBC connectivity
+# ------------------------------------------------------------------------------
+<IfModule mod_php.c>
+    # Increase memory limit for large API responses and database operations
+    php_value memory_limit 256M
+
+    # Increase max execution time for slow iRacing API calls
+    php_value max_execution_time 60
+
+    # Increase POST body size for settings and large payloads
+    php_value post_max_size 8M
+    php_value upload_max_filesize 8M
+
+    # Enable error display in development (disable in production)
+    php_flag display_errors On
+    php_value error_reporting E_ALL
+
+    # Ensure the ODBC extension is available
+    # (Uncomment and adjust if needed on your server)
+    # php_value extension odbc.so
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Security: deny access to sensitive files
+# ------------------------------------------------------------------------------
+<FilesMatch "\.(mdb|accdb|log|ini|bak|sql)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Set default content type for PHP responses
+<IfModule mod_mime.c>
+    AddType application/json .json
+</IfModule>
