@@ -1,0 +1,242 @@
+/* ==========================================================================
+   IRSDK SOF — Driver Profile Page
+   ==========================================================================
+   Detailed view of a single driver. Layout:
+   - Header: name, license, iRating badge, tag controls
+   - Stats row: key metrics (iRating, SR, starts, wins, incidents)
+   - Recent results table
+   - Notes section (personal tags / notes about this driver)
+   ========================================================================== */
+
+/* ---------- Page Layout ------------------------------------------------ */
+.driver-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 960px;
+}
+
+/* ---------- Driver Header ---------------------------------------------- */
+.driver-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.driver-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.driver-name {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.driver-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.driver-club {
+  color: var(--text-muted);
+}
+
+.driver-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* Large iRating display next to name */
+.driver-irating-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.driver-irating-value {
+  font-family: var(--font-data);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.driver-irating-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* ---------- Stats Row -------------------------------------------------- */
+.driver-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.driver-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.driver-stat-value {
+  font-family: var(--font-data);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.driver-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* Stat change indicator (up / down arrow + delta) */
+.driver-stat-delta {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.driver-stat-delta.delta-up {
+  color: var(--accent-green);
+}
+
+.driver-stat-delta.delta-down {
+  color: var(--accent-red);
+}
+
+.driver-stat-delta.delta-neutral {
+  color: var(--text-muted);
+}
+
+/* ---------- Recent Results Table --------------------------------------- */
+.driver-results {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.driver-results-table {
+  /* Extends .table from components.css */
+}
+
+/* Result position badge */
+.driver-result-pos {
+  font-family: var(--font-data);
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.driver-result-pos.pos-win {
+  color: var(--bg-primary);
+  background: var(--accent-green);
+}
+
+.driver-result-pos.pos-podium {
+  color: var(--bg-primary);
+  background: var(--accent-cyan);
+}
+
+.driver-result-pos.pos-top10 {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.driver-result-pos.pos-dnf {
+  color: var(--accent-red);
+  background: var(--accent-red-dim);
+}
+
+/* iRating change in results */
+.driver-result-change {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.driver-result-change.change-positive { color: var(--accent-green); }
+.driver-result-change.change-negative { color: var(--accent-red); }
+
+/* ---------- Driver Notes / Tags Section -------------------------------- */
+.driver-notes {
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.driver-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.driver-notes-textarea {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.driver-notes-textarea:focus {
+  border-color: var(--accent-cyan);
+}
+
+/* ---------- Driver Encounter History ----------------------------------- */
+.driver-encounters {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.driver-encounter-count {
+  font-family: var(--font-data);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cyan);
+}

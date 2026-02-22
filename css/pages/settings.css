@@ -1,0 +1,278 @@
+/* ==========================================================================
+   IRSDK SOF — Settings Page
+   ==========================================================================
+   Application settings form. Sections:
+   - Connection settings (iRacing data path, API keys)
+   - Profile settings (default license, favorite series)
+   - Decision engine thresholds
+   - Display preferences (units, language)
+   - Data management (export, clear cache)
+   ========================================================================== */
+
+/* ---------- Page Layout ------------------------------------------------ */
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 720px;
+}
+
+/* ---------- Settings Section ------------------------------------------- */
+.settings-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.settings-section-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.settings-section-body {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* ---------- Settings Row (Label + Input) ------------------------------- */
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid rgba(30, 30, 30, 0.5);
+  padding-top: var(--spacing-md);
+}
+
+.settings-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.settings-row-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: var(--leading-normal);
+}
+
+.settings-row-control {
+  flex-shrink: 0;
+  min-width: 200px;
+}
+
+/* Toggle row (label left, toggle right) */
+.settings-row-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+}
+
+.settings-row-toggle + .settings-row-toggle {
+  border-top: 1px solid rgba(30, 30, 30, 0.5);
+  padding-top: var(--spacing-md);
+}
+
+/* ---------- Threshold Slider ------------------------------------------- */
+.settings-slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-slider-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.settings-slider-label {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.settings-slider-value {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cyan);
+}
+
+/* Custom range input */
+.settings-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  outline: none;
+  border: 1px solid var(--border);
+}
+
+.settings-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.settings-range::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(0, 191, 255, 0.50);
+}
+
+.settings-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  border: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+.settings-range::-moz-range-thumb:hover {
+  box-shadow: 0 0 8px rgba(0, 191, 255, 0.50);
+}
+
+/* ---------- API Key Input ---------------------------------------------- */
+.settings-api-key {
+  position: relative;
+}
+
+.settings-api-key .input {
+  font-family: var(--font-data);
+  padding-right: 40px;
+}
+
+.settings-api-key-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.settings-api-key-toggle:hover {
+  color: var(--text-primary);
+}
+
+/* ---------- Data Management -------------------------------------------- */
+.settings-data-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* Storage usage bar */
+.settings-storage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-storage-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.settings-storage-fill {
+  height: 100%;
+  background: var(--accent-cyan);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.settings-storage-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.settings-storage-used {
+  font-family: var(--font-data);
+  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+}
+
+/* ---------- Settings Footer (Save / Reset) ----------------------------- */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  position: sticky;
+  bottom: var(--spacing-md);
+}
+
+/* Unsaved changes indicator */
+.settings-unsaved {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-xs);
+  color: var(--accent-yellow);
+  margin-right: auto;
+}
+
+.settings-unsaved-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-yellow);
+}

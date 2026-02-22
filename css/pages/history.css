@@ -1,0 +1,214 @@
+/* ==========================================================================
+   IRSDK SOF — Session History Page
+   ==========================================================================
+   Chronological list of past sessions / races.
+   - Filter row (date range, series, result type)
+   - Summary stats bar (total races, avg finish, total iR change)
+   - Scrollable table of past sessions
+   ========================================================================== */
+
+/* ---------- Page Layout ------------------------------------------------ */
+.history-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* ---------- Filter Row ------------------------------------------------- */
+.history-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.history-filter-date {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.history-filter-date .input {
+  width: 140px;
+}
+
+.history-filter-separator {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Summary Stats Bar ------------------------------------------ */
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.history-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.history-summary-value {
+  font-family: var(--font-data);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.history-summary-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: var(--spacing-xs);
+}
+
+/* Positive / negative total iRating change */
+.history-summary-value.val-positive { color: var(--accent-green); }
+.history-summary-value.val-negative { color: var(--accent-red); }
+
+/* ---------- History Table ---------------------------------------------- */
+.history-table-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.history-table {
+  /* Extends .table from components.css */
+}
+
+/* Date column */
+.history-table .cell-date {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Series column — bold name */
+.history-table .cell-series {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+/* Track column */
+.history-table .cell-track {
+  color: var(--text-secondary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Position column — color coded */
+.history-table .cell-position {
+  font-family: var(--font-data);
+  font-weight: var(--weight-bold);
+  text-align: center;
+}
+
+.cell-position.pos-1  { color: var(--accent-green); }
+.cell-position.pos-2,
+.cell-position.pos-3  { color: var(--accent-cyan); }
+.cell-position.pos-top10 { color: var(--text-primary); }
+.cell-position.pos-dnf   { color: var(--accent-red); }
+
+/* iRating change column */
+.history-table .cell-ir-change {
+  font-family: var(--font-data);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+.cell-ir-change.change-up   { color: var(--accent-green); }
+.cell-ir-change.change-down { color: var(--accent-red); }
+.cell-ir-change.change-flat { color: var(--text-muted); }
+
+/* SOF column */
+.history-table .cell-sof {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--accent-cyan);
+  text-align: right;
+}
+
+/* Incidents column */
+.history-table .cell-incidents {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.cell-incidents.inc-clean   { color: var(--accent-green); }
+.cell-incidents.inc-caution { color: var(--accent-yellow); }
+.cell-incidents.inc-high    { color: var(--accent-red); }
+
+/* ---------- Pagination ------------------------------------------------- */
+.history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) 0;
+}
+
+.history-page-btn {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.history-page-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.history-page-btn.active {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-primary);
+}
+
+.history-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ---------- Expandable Row Detail -------------------------------------- */
+.history-row-detail {
+  background: rgba(255, 255, 255, 0.02);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.history-row-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-sm);
+}

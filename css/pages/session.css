@@ -1,0 +1,241 @@
+/* ==========================================================================
+   IRSDK SOF — Session Analysis Page
+   ==========================================================================
+   The core analysis view. Layout:
+   - Top row: session info bar (series, track, time-of-day)
+   - Left column: conditions + SOF circular gauge + decision panel
+   - Right column: driver grid (full roster with iRating, tags)
+   - Bottom: score bars for all decision criteria
+   ========================================================================== */
+
+/* ---------- Page-Level Layout ------------------------------------------ */
+.session-page {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "info     info"
+    "sidebar  drivers";
+  gap: var(--spacing-lg);
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* ---------- Session Info Bar ------------------------------------------- */
+.session-info-bar {
+  grid-area: info;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.session-info-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-info-series {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.session-info-track {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.session-info-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.session-meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.session-meta-value {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.session-meta-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Session Sidebar (Left Column) ------------------------------ */
+.session-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Conditions block */
+.session-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.session-conditions-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+/* SOF Gauge — centered circular gauge */
+.session-sof-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.session-sof-context {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.session-sof-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.session-sof-stat-value {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.session-sof-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Decision Panel — uses .decision-panel from components.css */
+.session-decision {
+  /* Container for the decision panel */
+}
+
+/* Criteria score bars */
+.session-criteria {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* ---------- Drivers Section (Right Column) ----------------------------- */
+.session-drivers {
+  grid-area: drivers;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Driver grid header (column labels) */
+.session-drivers-header {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Driver list (scrollable) */
+.session-drivers-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+/* Driver count */
+.session-drivers-count {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ---------- Field Strength Distribution -------------------------------- */
+.session-field-distribution {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 60px;
+  padding: var(--spacing-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.session-field-bar {
+  flex: 1;
+  min-width: 4px;
+  background: var(--accent-cyan);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), height var(--transition-normal);
+}
+
+.session-field-bar:hover {
+  opacity: 1;
+}
+
+/* Highlight the bar that represents the user's bracket */
+.session-field-bar.bar-self {
+  background: var(--accent-green);
+  opacity: 1;
+}
+
+/* ---------- Session Summary Stats Row ---------------------------------- */
+.session-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.session-summary-stat {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}

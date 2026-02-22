@@ -1,0 +1,305 @@
+/* ==========================================================================
+   IRSDK SOF — My Profile Page
+   ==========================================================================
+   User's own racing profile. Layout:
+   - Profile header card (name, license, avatar placeholder)
+   - iRating chart (line chart container — JS renders inside)
+   - Key stats grid (wins, starts, avg finish, inc/race)
+   - License progress bar
+   - Recent performance summary
+   ========================================================================== */
+
+/* ---------- Page Layout ------------------------------------------------ */
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 1080px;
+}
+
+/* ---------- Profile Header Card ---------------------------------------- */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.profile-name {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.profile-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.profile-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.profile-meta-value {
+  font-family: var(--font-data);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.profile-header-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.profile-header-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-header-stat-value {
+  font-family: var(--font-data);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.profile-header-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+
+/* ---------- iRating Chart Container ------------------------------------ */
+.profile-chart {
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.profile-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.profile-chart-title {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Time range filter buttons */
+.profile-chart-ranges {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.profile-chart-range {
+  font-size: var(--text-xs);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.profile-chart-range:hover {
+  color: var(--text-secondary);
+}
+
+.profile-chart-range.active {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+/* The chart canvas / SVG lives here — sized by JS charting library */
+.profile-chart-canvas {
+  width: 100%;
+  height: 240px;
+  position: relative;
+}
+
+/* Fallback grid lines (if no JS chart yet) */
+.profile-chart-grid {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 100% 25%, 25% 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Stats Grid ------------------------------------------------- */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.profile-stat-value {
+  font-family: var(--font-data);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.profile-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: var(--spacing-xs);
+}
+
+/* Small secondary stat (e.g., percentage) */
+.profile-stat-sub {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ---------- License Progress ------------------------------------------- */
+.profile-license {
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.profile-license-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.profile-license-class {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.profile-license-badge {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.profile-license-sr {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.profile-license-target {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* License SR progress bar */
+.profile-license-progress {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: var(--spacing-sm);
+}
+
+.profile-license-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent-green);
+  transition: width var(--transition-normal);
+}
+
+/* ---------- Recent Performance Summary --------------------------------- */
+.profile-recent {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.profile-recent-card {
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
