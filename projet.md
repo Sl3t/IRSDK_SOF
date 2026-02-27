@@ -1,10 +1,10 @@
 # IRSDK SOF Agent — Plan de Projet Complet
 
-> **Version** : 2.1 — 2026-02-22
-> **Statut** : EN DÉVELOPPEMENT
+> **Version** : 3.0 — 2026-02-27
+> **Statut** : EN DÉVELOPPEMENT (OAuth ✅ | Séries ✅ | Enrichissement ✅ | Bridge ✅ code prêt)
 > **Stack** : HTML / CSS / JS / PHP + Bridge Node.js (IRSDK)
 > **Serveur** : Laragon (PHP 8.x + Apache) sur SIM PC 1
-> **BDD** : Microsoft Access (.mdb) via ODBC
+> **BDD** : SQLite (via PHP PDO) — fichier `db/irsdk_sof.sqlite`
 > **Design** : Dark cockpit SimHub — palette validée
 
 ---
@@ -110,18 +110,15 @@
 
 **SIM PC 1 (serveur) :**
 - Windows 10/11 avec iRacing installé
-- Node.js (v18+ recommandé) — pour le bridge IRSDK
-- PHP 8.x (via WAMP, XAMPP ou Laragon) — pour le serveur web
-- Base de données (type à confirmer)
+- Node.js v18+ (v20 LTS recommandé) — pour le bridge IRSDK
+- Laragon (PHP 8.x + Apache) — serveur web
+- SQLite (intégré à PHP, aucune installation) — base de données
 
 **SIM PC 2 :**
 - Rien à installer — accès via navigateur web sur le réseau local
 
 **Tablette / Téléphone :**
 - Navigateur web moderne — accès via `http://[IP_SIM_PC_1]`
-
-> **⚠️ INFO ATTENDUE [A.4a]** : Quel serveur local PHP utilisez-vous ? (WAMP / XAMPP / Laragon / autre) et quelle version de PHP ?
-> **⚠️ INFO ATTENDUE [A.4b]** : Node.js est-il déjà installé sur le SIM PC 1 ? Si oui, quelle version (`node -v`) ?
 
 ---
 
@@ -310,11 +307,11 @@ Serveur web central qui :
 
 ### D.1 — Type de BDD
 
-> **⚠️ INFO ATTENDUE [D.1]** : Quand vous dites "MDB", précisez :
-> - **(a)** MariaDB / MySQL
-> - **(b)** Microsoft Access (.mdb / .accdb)
-> - **(c)** MongoDB
-> - **(d)** Autre
+**SQLite** via PHP PDO (`PDO('sqlite:...')`)
+- Fichier unique : `db/irsdk_sof.sqlite`
+- Créé automatiquement au premier accès par `api/db.php`
+- Pas de serveur à installer (SQLite intégré à PHP)
+- Schéma défini dans `db/schema.sql`
 
 ### D.2 — Schéma prévu (8 tables)
 
@@ -468,7 +465,7 @@ Serveur web central qui :
 - `cache_ttl_series` — Durée cache séries (défaut: 3600 = 1h)
 - `decision_weights` — JSON des poids des critères de décision
 
-> **⚠️ INFO ATTENDUE [D.2]** : Éléments de connexion BDD (host, port, nom de base, user, password)
+> **✅ Résolu** : Pas de serveur BDD. Fichier local SQLite `db/irsdk_sof.sqlite`, accès direct via PDO.
 
 ---
 
@@ -834,11 +831,13 @@ Session détectée (IRSDK) → Liste de 24 pilotes
 | Batch | Étalement des appels sur plusieurs secondes |
 | Retry | Backoff exponentiel en cas d'erreur 429 (rate limit) |
 
-### I.4 — Package PHP
-- `mwgg/iracing-php` (Composer) — wrapper PHP de l'API `/data`
-- Ou implémentation maison (curl + OAuth2)
+### I.4 — Implémentation PHP
+- Implémentation maison (curl + OAuth2) — pas de dépendance Composer
+- Auth OAuth2 via `api/iracing/auth.php` (Password Limited Grant)
+- Proxy API via `api/iracing/proxy.php` (avec link-follow automatique)
+- Tokens chiffrés en BDD (table `settings`, AES-256-CBC)
 
-> **⚠️ INFO ATTENDUE [I.1]** : Avez-vous déjà des credentials OAuth2 iRacing ? Sinon il faut les demander via https://support.iracing.com
+> **✅ Résolu [I.1]** : OAuth2 fonctionnel — client_id `677180-pwlimited`, tokens chiffrés en BDD.
 
 ---
 
@@ -949,33 +948,41 @@ IRSDK_SOF/
 
 ---
 
-## K. Décisions validées
+## K. Décisions validées et avancement
 
-### Réponses reçues
+### Décisions d'architecture
 
 | Ref | Question | Réponse |
 |-----|----------|---------|
-| **[A.4a]** | Serveur PHP | ✅ **Laragon** (léger, auto-config, PHP 8.x + Apache) |
-| **[A.4b]** | Node.js sur SIM PC 1 | ✅ **À installer** (v20 LTS recommandé) |
-| **[D.1]** | Type de BDD | ✅ **Microsoft Access (.mdb)** via ODBC PHP |
-| **[D.2]** | Connexion BDD | ✅ Fichier local `irsdk_sof.mdb` (pas de serveur, accès ODBC direct) |
-| **[I.1]** | OAuth2 iRacing | ⏳ **À demander** via https://support.iracing.com |
+| **[A.4a]** | Serveur PHP | ✅ **Laragon** (PHP 8.x + Apache) |
+| **[A.4b]** | Node.js sur SIM PC 1 | ✅ **v18+** requis (v20 LTS recommandé) |
+| **[D.1]** | Type de BDD | ✅ **SQLite** via PHP PDO (fichier `db/irsdk_sof.sqlite`) |
+| **[D.2]** | Connexion BDD | ✅ Fichier local, accès PDO direct, pas de serveur |
+| **[I.1]** | OAuth2 iRacing | ✅ **Fonctionnel** — client_id `677180-pwlimited`, Password Limited Grant |
 | **[H.4.2]** | Palette couleurs | ✅ **Dark cockpit SimHub** (noir pur + cyan/vert/rouge/jaune) |
 | **[H.4.5]** | Responsive | ✅ **Tous appareils** (tablette + téléphone + desktop) |
 | **[H.4]** | Référence visuelle | ✅ **Dashboard SimHub** — cockpit telemetry HUD |
 | **[F.6]** | Seuils GO/NOGO | ✅ **Configurables** dans les réglages |
 | **[F.2]** | Critères de décision | ✅ Validés (8 critères pondérés) |
 
-### En attente
+### Avancement des modules (v3.0 — 2026-02-27)
 
-| Ref | Question | Statut |
-|-----|----------|--------|
-| **[I.1]** | Credentials OAuth2 iRacing (client_id + client_secret) | À demander par l'utilisateur |
-
-> **Note** : L'app peut être développée et testée sans les credentials OAuth2. L'authentification iRacing sera le dernier module à brancher.
+| Module | Statut | Détail |
+|--------|--------|--------|
+| **Auth OAuth2** | ✅ Terminé | Password Limited Grant, tokens chiffrés AES-256, refresh auto |
+| **Séries catalogue** | ✅ Terminé | Sync 71 séries Road via `/data/series/get`, cartes avec badges licence |
+| **Enrichissement** | ✅ Terminé | Tracks + schedule via `/data/series/seasons`, current_track en base |
+| **Bridge IRSDK** | ✅ Code prêt | server.js + parsers + WebSocket client + live-data.json → À tester avec iRacing |
+| **Frontend SPA** | ✅ Structure | 7 pages (Dashboard, Séries, Session, Driver, Profil, Historique, Settings) |
+| **Moteur SOF** | ✅ Code prêt | Calcul côté client (sofEngine) + côté serveur |
+| **Moteur décision** | ✅ Code prêt | 8 critères pondérés, seuils configurables |
+| **Analyse pilotes** | ⏳ En cours | Endpoints créés, enrichissement API REST à brancher |
+| **Favoris** | ⏳ À faire | Étoile cliquable, affichage Dashboard |
+| **NEXT RACE timer** | ⏳ À faire | Calcul à partir de `race_interval_minutes` |
+| **AVG SOF historique** | ⏳ À faire | Collecte + moyenne SOF par série |
 
 ---
 
-> **Version 2.1** — Toutes les décisions d'architecture et de design validées. Développement lancé.
+> **Version 3.0** — OAuth fonctionnel, séries synchronisées, bridge prêt à tester.
 >
 > Chaque section indexée (A.1, B.2.3, F.2.6, H.3.4, etc.) peut être référencée directement dans vos retours.
