@@ -167,19 +167,23 @@ const SettingsPage = (() => {
           </h4>
           <p style="font-family:var(--font-data); font-size:var(--text-xs);
                     color:var(--text-muted); margin:0 0 var(--spacing-sm) 0;">
-            OAuth credentials from
+            Credentials OAuth depuis
             <a href="https://oauth.iracing.com/accountmanagement/" target="_blank"
                style="color:var(--accent-cyan);">iRacing Client Registration</a>
           </p>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
                       margin-bottom:var(--spacing-md);">
-            ${_inputField('oauth_client_id', 'OAuth Client ID', val('oauth_client_id'), 'text', 'from iRacing registration')}
-            ${_inputField('oauth_client_secret', 'OAuth Client Secret', val('oauth_client_secret'), 'password', 'from iRacing registration')}
+            ${_inputField('oauth_client_id', 'OAuth Client ID', val('oauth_client_id'), 'text', 'ex: 677180-pwlimited')}
+            ${_inputField('oauth_client_secret', 'OAuth Client Secret', val('oauth_client_secret'), 'password', 'secret fourni par iRacing')}
           </div>
+          <p style="font-family:var(--font-data); font-size:var(--text-xs);
+                    color:var(--text-muted); margin:0 0 var(--spacing-sm) 0;">
+            Compte iRacing (identifiants de connexion)
+          </p>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
                       margin-bottom:var(--spacing-md);">
-            ${_inputField('iracing_email', 'Email iRacing', val('iracing_email'), 'text', 'votre@email.com')}
-            ${_inputField('iracing_password', 'Mot de passe iRacing', val('iracing_password'), 'password', 'mot de passe')}
+            ${_inputField('iracing_email', 'Username / Email iRacing', val('iracing_email'), 'text', 'email ou custID')}
+            ${_inputField('iracing_password', 'Password iRacing', val('iracing_password'), 'password', 'votre mot de passe iRacing')}
           </div>
           <button onclick="SettingsPage.testApiConnection()"
                   style="padding:var(--spacing-xs) var(--spacing-md);
