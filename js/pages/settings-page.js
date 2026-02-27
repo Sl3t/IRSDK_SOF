@@ -185,17 +185,27 @@ const SettingsPage = (() => {
             ${_inputField('iracing_email', 'Username / Email iRacing', val('iracing_email'), 'text', 'email ou custID')}
             ${_inputField('iracing_password', 'Password iRacing', val('iracing_password'), 'password', 'votre mot de passe iRacing')}
           </div>
-          <button onclick="SettingsPage.testApiConnection()"
-                  style="padding:var(--spacing-xs) var(--spacing-md);
-                         background:var(--accent-cyan-dim); color:var(--accent-cyan);
-                         border:1px solid var(--accent-cyan); border-radius:var(--radius-md);
-                         font-family:var(--font-data); font-size:var(--text-sm);
-                         cursor:pointer; transition:all 150ms ease;">
-            Test API Connection
-          </button>
-          <span id="api-test-result" style="margin-left:var(--spacing-sm);
-                     font-family:var(--font-data); font-size:var(--text-xs);
-                     color:var(--text-muted);"></span>
+          <div style="display:flex; gap:var(--spacing-sm); align-items:center; flex-wrap:wrap;">
+            <button onclick="SettingsPage.testApiConnection()"
+                    style="padding:var(--spacing-xs) var(--spacing-md);
+                           background:var(--accent-cyan-dim); color:var(--accent-cyan);
+                           border:1px solid var(--accent-cyan); border-radius:var(--radius-md);
+                           font-family:var(--font-data); font-size:var(--text-sm);
+                           cursor:pointer; transition:all 150ms ease;">
+              Test API Connection
+            </button>
+            <button onclick="SettingsPage.resetOAuthCredentials()"
+                    style="padding:var(--spacing-xs) var(--spacing-md);
+                           background:transparent; color:var(--text-muted);
+                           border:1px solid var(--border); border-radius:var(--radius-md);
+                           font-family:var(--font-data); font-size:var(--text-sm);
+                           cursor:pointer; transition:all 150ms ease;">
+              Reset OAuth
+            </button>
+            <span id="api-test-result" style="margin-left:var(--spacing-sm);
+                       font-family:var(--font-data); font-size:var(--text-xs);
+                       color:var(--text-muted);"></span>
+          </div>
         </div>
 
         <!-- ============================================ -->
@@ -495,6 +505,42 @@ const SettingsPage = (() => {
   }
 
   /**
+   * Reset all OAuth credentials (clears old legacy values from the database).
+   */
+  async function resetOAuthCredentials() {
+    if (!confirm('Effacer tous les credentials OAuth stockés ?')) return;
+
+    const keysToDelete = [
+      'oauth_client_id', 'oauth_client_secret', 'oauth_authcode',
+      'oauth_access_token', 'oauth_refresh_token', 'oauth_token_expires_at',
+      'oauth_refresh_expires_at', 'oauth_authenticated_at', 'oauth_token_type',
+      'iracing_email', 'iracing_password',
+    ];
+
+    try {
+      for (const key of keysToDelete) {
+        await api.post('settings', { key, value: '' });
+      }
+      // Clear the input fields
+      for (const key of ['oauth_client_id', 'oauth_client_secret', 'iracing_email', 'iracing_password']) {
+        const el = document.querySelector(`[data-setting="${key}"]`);
+        if (el) el.value = '';
+      }
+      const resultEl = document.getElementById('api-test-result');
+      if (resultEl) {
+        resultEl.textContent = 'OAuth credentials reset.';
+        resultEl.style.color = 'var(--accent-cyan)';
+      }
+    } catch (err) {
+      const resultEl = document.getElementById('api-test-result');
+      if (resultEl) {
+        resultEl.textContent = 'Reset error: ' + err.message;
+        resultEl.style.color = 'var(--accent-red)';
+      }
+    }
+  }
+
+  /**
    * Test the IRSDK Bridge WebSocket connection.
    */
   function testBridgeConnection() {
@@ -570,6 +616,7 @@ const SettingsPage = (() => {
     render,
     saveAll,
     testApiConnection,
+    resetOAuthCredentials,
     testBridgeConnection,
     clearCache,
     updateWeightDisplay,
