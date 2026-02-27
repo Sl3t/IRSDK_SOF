@@ -59,7 +59,7 @@ try {
         hash('sha256', $clientSecret . strtolower($clientId), true)
     );
 
-    $postData = http_build_query([
+    $postData = json_encode([
         'email'    => $clientId,
         'password' => $encodedPassword,
     ]);
@@ -74,7 +74,7 @@ try {
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/x-www-form-urlencoded',
+            'Content-Type: application/json',
         ],
         // Enable cookie handling for iRacing session cookies
         CURLOPT_COOKIEJAR      => sys_get_temp_dir() . '/irsdk_sof_cookies.txt',
