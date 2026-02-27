@@ -116,27 +116,49 @@ $accessToken = _decrypt($encToken, $key);
 $baseUrl = IRACING_API_BASE_URL;
 $url     = $baseUrl . '/data/series/get';
 
-$ch = curl_init();
-curl_setopt_array($ch, [
-    CURLOPT_URL            => $url,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT        => 30,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
-    CURLOPT_HTTPHEADER     => [
-        'Accept: application/json',
-        "Authorization: Bearer {$accessToken}",
-    ],
-    CURLOPT_SSL_VERIFYPEER => true,
-]);
+/**
+ * Make an authenticated GET request to the iRacing Data API.
+ */
+function _fetchIRacing(string $url, string $token): array
+{
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            "Authorization: Bearer {$token}",
+        ],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
 
-$response  = curl_exec($ch);
-$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return ['response' => $response, 'http_code' => $httpCode, 'error' => $curlError];
+}
+
+$result = _fetchIRacing($url, $accessToken);
+
+// On 401, force re-auth and retry (token may lack scope)
+if ($result['http_code'] === 401) {
+    if (_reAuth()) {
+        $encToken = $db->getSetting('oauth_access_token');
+        $accessToken = _decrypt($encToken, $key);
+        $result = _fetchIRacing($url, $accessToken);
+    }
+}
+
+$response = $result['response'];
+$httpCode = $result['http_code'];
 
 if ($response === false) {
-    jsonError("iRacing API connection failed: {$curlError}", 502);
+    jsonError("iRacing API connection failed: {$result['error']}", 502);
 }
 
 if ($httpCode >= 400) {
