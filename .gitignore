@@ -1,0 +1,12 @@
+# Database files
+db/*.sqlite
+db/*.sqlite-journal
+db/*.sqlite-wal
+db/*.sqlite-shm
+
+# PHP temp/cookies
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
