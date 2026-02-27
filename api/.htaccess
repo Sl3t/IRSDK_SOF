@@ -28,6 +28,32 @@
 
     # Route /api/iracing/cache to /api/iracing/cache.php
     RewriteRule ^iracing/cache/?$ iracing/cache.php [L,QSA]
+
+    # Route /api/series/* endpoints
+    RewriteRule ^series/list/?$ series/list.php [L,QSA]
+    RewriteRule ^series/favorites/?$ series/favorites.php [L,QSA]
+    RewriteRule ^series/sessions/?$ series/sessions.php [L,QSA]
+
+    # Route /api/session/* endpoints
+    RewriteRule ^session/live/?$ session/live.php [L,QSA]
+    RewriteRule ^session/history/?$ session/history.php [L,QSA]
+
+    # Route /api/driver/* endpoints
+    RewriteRule ^driver/analyze/?$ driver/analyze.php [L,QSA]
+    RewriteRule ^driver/stats/?$ driver/stats.php [L,QSA]
+    RewriteRule ^driver/me/?$ driver/me.php [L,QSA]
+
+    # Route /api/sof/calculate
+    RewriteRule ^sof/calculate/?$ sof/calculate.php [L,QSA]
+
+    # Route /api/decision/evaluate
+    RewriteRule ^decision/evaluate/?$ decision/evaluate.php [L,QSA]
+
+    # Route /api/conditions/live
+    RewriteRule ^conditions/live/?$ conditions/live.php [L,QSA]
+
+    # Route /api/setup-identity
+    RewriteRule ^setup-identity/?$ setup-identity.php [L,QSA]
 </IfModule>
 
 # ------------------------------------------------------------------------------
