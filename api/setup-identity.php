@@ -1,22 +1,31 @@
 <?php
 /**
- * One-time setup script to insert user identity into the database.
+ * One-time setup script to insert user identity + API credentials into the database.
  * Run via: http://localhost/IRSDK_SOF/api/setup-identity.php
- * Can be safely deleted after use.
+ * DELETE THIS FILE after use — it contains logic to store sensitive credentials.
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/iracing/crypto.php';
 
-$db = Database::getInstance();
+$db  = Database::getInstance();
+$key = _getEncryptionKey();
 
-// Insert or update identity settings
+// ---- Identity ----
 $db->setSetting('my_iracing_user_id', '677180');
 $db->setSetting('my_name', 'Paul Lavoisiere');
 
-// Also insert the driver record
+// ---- API credentials (encrypted) ----
+$email    = 'paul.lavoisiere@sl3t.com';
+$password = '$106JericaLane';
+
+$db->setSetting('oauth_client_id',     _encrypt($email, $key));
+$db->setSetting('oauth_client_secret',  _encrypt($password, $key));
+
+// ---- Driver record ----
 $existing = $db->fetchOne(
     "SELECT id FROM drivers WHERE iracing_user_id = ?",
     [677180]
@@ -35,12 +44,21 @@ if ($existing === null) {
     $driverMsg = 'Driver record updated.';
 }
 
+// ---- Verify storage ----
+$storedId     = $db->getSetting('oauth_client_id');
+$storedSecret = $db->getSetting('oauth_client_secret');
+$decryptedId  = _decrypt($storedId, $key);
+
 header('Content-Type: application/json');
 echo json_encode([
-    'success' => true,
-    'message' => "Identity saved: Paul Lavoisiere (#677180). {$driverMsg}",
-    'settings' => [
-        'my_iracing_user_id' => $db->getSetting('my_iracing_user_id'),
-        'my_name'            => $db->getSetting('my_name'),
+    'success'  => true,
+    'message'  => "All credentials saved and encrypted. {$driverMsg}",
+    'identity' => [
+        'user_id' => $db->getSetting('my_iracing_user_id'),
+        'name'    => $db->getSetting('my_name'),
+    ],
+    'api' => [
+        'email_stored'    => '****' . substr($decryptedId, -4),
+        'password_stored' => true,
     ],
 ]);
