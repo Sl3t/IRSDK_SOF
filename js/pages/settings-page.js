@@ -478,6 +478,15 @@ const SettingsPage = (() => {
       const iracingEmail      = document.querySelector('[data-setting="iracing_email"]')?.value || '';
       const iracingPassword   = document.querySelector('[data-setting="iracing_password"]')?.value || '';
 
+      // Save non-masked values to localStorage for persistence across reloads
+      if (oauthClientId && !oauthClientId.startsWith('****')) storage.set('oauth_client_id', oauthClientId);
+      if (oauthClientSecret && !oauthClientSecret.startsWith('****')) storage.set('oauth_client_secret', oauthClientSecret);
+      if (iracingEmail && !iracingEmail.startsWith('****')) storage.set('iracing_email', iracingEmail);
+      if (iracingPassword && !iracingPassword.startsWith('****')) storage.set('iracing_password', iracingPassword);
+
+      // Also save all other settings to API
+      await saveAll();
+
       const result = await api.post('iracing/auth', {
         oauth_client_id: oauthClientId,
         oauth_client_secret: oauthClientSecret,
@@ -521,10 +530,11 @@ const SettingsPage = (() => {
       for (const key of keysToDelete) {
         await api.post('settings', { key, value: '' });
       }
-      // Clear the input fields
+      // Clear the input fields and localStorage
       for (const key of ['oauth_client_id', 'oauth_client_secret', 'iracing_email', 'iracing_password']) {
         const el = document.querySelector(`[data-setting="${key}"]`);
         if (el) el.value = '';
+        storage.set(key, '');
       }
       const resultEl = document.getElementById('api-test-result');
       if (resultEl) {
