@@ -28,14 +28,82 @@ $db  = Database::getInstance();
 $key = _getEncryptionKey();
 
 // ============================================================================
-// Get a valid access token
+// Get a valid access token (auto-refresh if expired)
 // ============================================================================
+
+/**
+ * Re-authenticate using stored credentials (password_limited grant).
+ */
+function _reAuth(): bool
+{
+    $db  = Database::getInstance();
+    $key = _getEncryptionKey();
+
+    $encClientId     = $db->getSetting('oauth_client_id');
+    $encClientSecret = $db->getSetting('oauth_client_secret');
+    $encEmail        = $db->getSetting('iracing_email');
+    $encPassword     = $db->getSetting('iracing_password');
+
+    if (!$encClientId || !$encClientSecret || !$encEmail || !$encPassword) return false;
+
+    try {
+        $clientId     = _decrypt($encClientId, $key);
+        $clientSecret = _decrypt($encClientSecret, $key);
+        $email        = _decrypt($encEmail, $key);
+        $password     = _decrypt($encPassword, $key);
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    $maskedSecret = base64_encode(hash('sha256', $clientSecret . strtolower(trim($clientId)), true));
+    $maskedPwd    = base64_encode(hash('sha256', $password . strtolower(trim($email)), true));
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => IRACING_OAUTH_TOKEN_URL,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'grant_type'    => 'password_limited',
+            'client_id'     => $clientId,
+            'client_secret' => $maskedSecret,
+            'username'      => $email,
+            'password'      => $maskedPwd,
+        ]),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code >= 200 && $code < 300) {
+        $data = json_decode($resp, true);
+        if (!empty($data['access_token'])) {
+            $db->setSetting('oauth_access_token', _encrypt($data['access_token'], $key));
+            $db->setSetting('oauth_authenticated_at', date('Y-m-d H:i:s'));
+            $db->setSetting('oauth_token_expires_at', date('Y-m-d H:i:s', time() + (int)($data['expires_in'] ?? 600)));
+            if (!empty($data['refresh_token'])) {
+                $db->setSetting('oauth_refresh_token', _encrypt($data['refresh_token'], $key));
+            }
+            return true;
+        }
+    }
+    return false;
+}
 
 $encToken  = $db->getSetting('oauth_access_token');
 $expiresAt = $db->getSetting('oauth_token_expires_at');
 
+// Auto-refresh if expired
 if (!$encToken || !$expiresAt || strtotime($expiresAt) <= time()) {
-    jsonError('Access token expired or missing. Please authenticate first in Settings.', 401);
+    if (!_reAuth()) {
+        jsonError('Authentication expired. Please re-authenticate in Settings.', 401);
+    }
+    $encToken = $db->getSetting('oauth_access_token');
 }
 
 $accessToken = _decrypt($encToken, $key);
