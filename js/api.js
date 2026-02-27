@@ -186,6 +186,13 @@ const api = (() => {
   const getSeriesList = () => get('series/list');
 
   /**
+   * Sync series catalogue from the iRacing Data API.
+   * @param {string} [category] - Optional filter (e.g. 'road')
+   * @returns {Promise<object|null>}
+   */
+  const syncSeries = (category = 'road') => post('series/sync', { category });
+
+  /**
    * Get the user's favorite series.
    * @returns {Promise<object|null>}
    */
@@ -310,6 +317,7 @@ const api = (() => {
     getSessionLive,
     getSessionHistory,
     getSeriesList,
+    syncSeries,
     getSeriesFavorites,
     setSeriesFavorite,
     getSeriesSessions,

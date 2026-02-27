@@ -4,12 +4,12 @@
  * Displays all available iRacing series in a filterable, searchable grid.
  *
  * Features:
- *   - Category filter buttons: All / Road / Oval / Dirt Road / Dirt Oval
- *   - License filter: All / Rookie / D / C / B / A
+ *   - Road series only (synced from iRacing Data API)
+ *   - License filter: All / R / D / C / B / A
  *   - Search input to filter by series name
+ *   - Sync button to import series from iRacing
  *   - Grid of series cards (SeriesCard component)
  *   - Favorite star toggle on each card
- *   - Shows current track + next race time
  *
  * Usage:
  *   SeriesPage.render();  // Writes directly into #app container
@@ -19,8 +19,8 @@
 
 const SeriesPage = (() => {
 
-  /** Currently selected category filter. */
-  let _categoryFilter = 'All';
+  /** Syncing flag. */
+  let _syncing = false;
 
   /** Currently selected license filter. */
   let _licenseFilter = 'All';
@@ -41,11 +41,6 @@ const SeriesPage = (() => {
    */
   function _getFiltered() {
     let filtered = [..._allSeries];
-
-    // Category filter
-    if (_categoryFilter !== 'All') {
-      filtered = filtered.filter((s) => s.category === _categoryFilter);
-    }
 
     // License filter
     if (_licenseFilter !== 'All') {
@@ -112,28 +107,7 @@ const SeriesPage = (() => {
     const data = await api.getSeriesList();
     _allSeries = Array.isArray(data) ? data : (data?.series || []);
 
-    // Determine active button styles
-    const categories = ['All', 'Road', 'Oval', 'Dirt Road', 'Dirt Oval'];
     const licenses = ['All', 'R', 'D', 'C', 'B', 'A'];
-
-    // Build filter bar
-    let catButtons = '';
-    categories.forEach((cat) => {
-      const isActive = cat === _categoryFilter;
-      const bg = isActive ? 'var(--accent-cyan-dim)' : 'transparent';
-      const color = isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)';
-      const border = isActive ? 'var(--accent-cyan)' : 'var(--border)';
-      catButtons += `
-        <button onclick="SeriesPage.setCategory('${cat}')"
-                style="padding:var(--spacing-xs) var(--spacing-md);
-                       background:${bg}; color:${color};
-                       border:1px solid ${border}; border-radius:var(--radius-full);
-                       font-family:var(--font-data); font-size:var(--text-xs);
-                       cursor:pointer; text-transform:uppercase;
-                       transition:all 150ms ease;">
-          ${cat}
-        </button>`;
-    });
 
     let licButtons = '';
     licenses.forEach((lic) => {
@@ -175,50 +149,56 @@ const SeriesPage = (() => {
                   max-width:var(--content-max-width); margin:0 auto;">
 
         <!-- Page header -->
-        <h2 style="font-family:var(--font-display); font-size:var(--text-xl);
-                   color:var(--text-primary); margin:0 0 var(--spacing-lg) 0;
-                   text-transform:uppercase; letter-spacing:0.08em;">
-          Series Catalog
-        </h2>
+        <div style="display:flex; align-items:center; gap:var(--spacing-md);
+                    margin-bottom:var(--spacing-lg);">
+          <h2 style="font-family:var(--font-display); font-size:var(--text-xl);
+                     color:var(--text-primary); margin:0;
+                     text-transform:uppercase; letter-spacing:0.08em;">
+            Series Road
+          </h2>
+          <button id="sync-series-btn" onclick="SeriesPage.syncFromIRacing()"
+                  style="padding:var(--spacing-xs) var(--spacing-md);
+                         background:var(--accent-cyan-dim); color:var(--accent-cyan);
+                         border:1px solid var(--accent-cyan); border-radius:var(--radius-md);
+                         font-family:var(--font-data); font-size:var(--text-xs);
+                         cursor:pointer; transition:all 150ms ease;">
+            Sync iRacing
+          </button>
+          <span id="sync-result" style="font-family:var(--font-data);
+                     font-size:var(--text-xs); color:var(--text-muted);"></span>
+        </div>
 
         <!-- Filter bar -->
-        <div style="display:flex; flex-direction:column; gap:var(--spacing-sm);
-                    margin-bottom:var(--spacing-lg); padding-bottom:var(--spacing-md);
+        <div style="display:flex; flex-wrap:wrap; gap:var(--spacing-sm);
+                    align-items:center; margin-bottom:var(--spacing-lg);
+                    padding-bottom:var(--spacing-md);
                     border-bottom:1px solid var(--border);">
 
-          <!-- Category buttons -->
-          <div style="display:flex; flex-wrap:wrap; gap:var(--spacing-xs);">
-            ${catButtons}
+          <!-- License buttons -->
+          <div style="display:flex; gap:var(--spacing-xs);">
+            ${licButtons}
           </div>
 
-          <!-- License buttons + search -->
-          <div style="display:flex; flex-wrap:wrap; gap:var(--spacing-sm);
-                      align-items:center;">
-            <div style="display:flex; gap:var(--spacing-xs);">
-              ${licButtons}
-            </div>
+          <span style="flex:1;"></span>
 
-            <span style="flex:1;"></span>
+          <!-- Search input -->
+          <input id="series-search-input" type="text" placeholder="Rechercher..."
+                 value="${_searchQuery}"
+                 oninput="SeriesPage.setSearch(this.value)"
+                 style="padding:var(--spacing-xs) var(--spacing-sm);
+                        background:var(--bg-input); color:var(--text-primary);
+                        border:1px solid var(--border); border-radius:var(--radius-md);
+                        font-family:var(--font-body); font-size:var(--text-sm);
+                        outline:none; min-width:200px;
+                        transition:border-color 150ms ease;"
+                 onfocus="this.style.borderColor='var(--accent-cyan)'"
+                 onblur="this.style.borderColor='var(--border)'" />
 
-            <!-- Search input -->
-            <input id="series-search-input" type="text" placeholder="Search series..."
-                   value="${_searchQuery}"
-                   oninput="SeriesPage.setSearch(this.value)"
-                   style="padding:var(--spacing-xs) var(--spacing-sm);
-                          background:var(--bg-input); color:var(--text-primary);
-                          border:1px solid var(--border); border-radius:var(--radius-md);
-                          font-family:var(--font-body); font-size:var(--text-sm);
-                          outline:none; min-width:200px;
-                          transition:border-color 150ms ease;"
-                   onfocus="this.style.borderColor='var(--accent-cyan)'"
-                   onblur="this.style.borderColor='var(--border)'" />
-
-            <!-- Count -->
-            <span id="series-count" style="font-family:var(--font-data);
-                       font-size:var(--text-xs); color:var(--text-muted);">
-              ${filtered.length} series
-            </span>
-          </div>
+          <!-- Count -->
+          <span id="series-count" style="font-family:var(--font-data);
+                     font-size:var(--text-xs); color:var(--text-muted);">
+            ${filtered.length} series
+          </span>
         </div>
 
         <!-- Series grid -->
@@ -237,14 +217,41 @@ const SeriesPage = (() => {
   // =========================================================================
 
   /**
-   * Set the category filter and re-render the grid.
-   * @param {string} category
+   * Sync series from iRacing Data API (road only).
    */
-  function setCategory(category) {
-    _categoryFilter = category;
-    _applyFilters();
-    // Re-render filter buttons for active state
-    render();
+  async function syncFromIRacing() {
+    if (_syncing) return;
+    _syncing = true;
+
+    const btn = document.getElementById('sync-series-btn');
+    const resultEl = document.getElementById('sync-result');
+    if (btn) btn.textContent = 'Syncing...';
+    if (resultEl) { resultEl.textContent = ''; resultEl.style.color = 'var(--accent-cyan)'; }
+
+    try {
+      const result = await api.syncSeries('road');
+      if (result && result.success) {
+        if (resultEl) {
+          resultEl.textContent = result.message || `${result.total} series synced`;
+          resultEl.style.color = 'var(--accent-green)';
+        }
+        // Reload series list
+        await render();
+      } else {
+        if (resultEl) {
+          resultEl.textContent = result?.message || 'Sync failed';
+          resultEl.style.color = 'var(--accent-red)';
+        }
+      }
+    } catch (err) {
+      if (resultEl) {
+        resultEl.textContent = 'Error: ' + err.message;
+        resultEl.style.color = 'var(--accent-red)';
+      }
+    } finally {
+      _syncing = false;
+      if (btn) btn.textContent = 'Sync iRacing';
+    }
   }
 
   /**
@@ -268,7 +275,7 @@ const SeriesPage = (() => {
 
   return {
     render,
-    setCategory,
+    syncFromIRacing,
     setLicense,
     setSearch,
   };
