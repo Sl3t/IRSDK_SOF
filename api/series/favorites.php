@@ -54,11 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             race_interval_minutes,
             updated_at
         FROM favorite_series
-        WHERE is_favorite = TRUE
+        WHERE is_favorite = 1
         ORDER BY series_name ASC"
     );
 
-    // Format boolean fields (Access YESNO returns -1/0).
+    // Format boolean fields.
     foreach ($favorites as &$row) {
         $row['is_favorite'] = (bool) $row['is_favorite'];
     }
@@ -98,7 +98,7 @@ $now = now();
 
 if ($existing !== null) {
     // Update existing entry.
-    $updateData = ['is_favorite' => $isFavorite ? -1 : 0, 'updated_at' => $now];
+    $updateData = ['is_favorite' => $isFavorite ? 1 : 0, 'updated_at' => $now];
 
     // Only update name/category/license if provided (non-empty).
     if ($seriesName !== '') {
@@ -130,7 +130,7 @@ if ($existing !== null) {
         'series_name'       => $seriesName,
         'category'          => $category,
         'license_group'     => $licenseGroup,
-        'is_favorite'       => $isFavorite ? -1 : 0,
+        'is_favorite'       => $isFavorite ? 1 : 0,
         'updated_at'        => $now,
     ]);
 

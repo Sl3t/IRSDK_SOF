@@ -41,7 +41,7 @@ $limit    = (int) clampValue((float) $limit, 1, 100);
 
 $db = Database::getInstance();
 
-$sql = "SELECT TOP {$limit}
+$sql = "SELECT
             id,
             iracing_subsession_id,
             session_type,
@@ -65,7 +65,8 @@ $sql = "SELECT TOP {$limit}
             created_at
         FROM sessions
         WHERE series_id = ?
-        ORDER BY created_at DESC";
+        ORDER BY created_at DESC
+        LIMIT {$limit}";
 
 $sessions = $db->fetchAll($sql, [(int) $seriesId]);
 

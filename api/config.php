@@ -15,21 +15,11 @@ declare(strict_types=1);
 // Database
 // ============================================================================
 
-/** Absolute path to the Microsoft Access .mdb database file. */
-define('DB_PATH', __DIR__ . '/../db/irsdk_sof.mdb');
+/** Absolute path to the SQLite database file. */
+define('DB_PATH', __DIR__ . '/../db/irsdk_sof.sqlite');
 
-/**
- * ODBC DSN string for PDO connection to the Access database.
- * Uses the Microsoft Access Driver via ODBC. On Windows with Laragon this
- * typically resolves to the Jet or ACE engine driver.
- *
- * Common driver names:
- *   Windows:  "Microsoft Access Driver (*.mdb)"
- *   Windows (64-bit ACE): "Microsoft Access Driver (*.mdb, *.accdb)"
- *
- * Adjust the driver name below if your system uses a different ODBC driver.
- */
-define('DB_DSN', 'odbc:Driver={Microsoft Access Driver (*.mdb)};Dbq=' . DB_PATH . ';');
+/** PDO DSN string for SQLite connection. */
+define('DB_DSN', 'sqlite:' . DB_PATH);
 
 // ============================================================================
 // Bridge WebSocket (Node.js IRSDK bridge on SIM PC 1)

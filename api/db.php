@@ -2,8 +2,8 @@
 /**
  * IRSDK SOF Agent — Database Access Layer
  *
- * Provides a singleton PDO connection to the Microsoft Access .mdb database
- * via ODBC, along with convenience methods for common query patterns.
+ * Provides a singleton PDO connection to the SQLite database,
+ * along with convenience methods for common query patterns.
  *
  * Usage:
  *   require_once __DIR__ . '/db.php';
@@ -32,27 +32,32 @@ class Database
     /**
      * Private constructor — use getInstance() instead.
      *
-     * Opens a PDO ODBC connection to the Microsoft Access .mdb file
-     * defined in config.php. Configures PDO to throw exceptions on errors
-     * and return associative arrays by default.
+     * Opens a PDO SQLite connection to the database file defined in
+     * config.php. Creates the database and tables automatically if the
+     * file does not exist yet.
      *
-     * @throws RuntimeException If the database file does not exist.
-     * @throws PDOException     If the ODBC connection fails.
+     * @throws PDOException If the connection fails.
      */
     private function __construct()
     {
         $dbPath = DB_PATH;
+        $needsInit = !file_exists($dbPath);
 
-        if (!file_exists($dbPath)) {
-            throw new RuntimeException(
-                "Database file not found: {$dbPath}. " .
-                "Create the .mdb file and run schema.sql before starting the application."
-            );
+        // Ensure the directory exists
+        $dir = dirname($dbPath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
         }
 
         $this->pdo = new PDO(DB_DSN);
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->pdo->exec('PRAGMA journal_mode=WAL');
+        $this->pdo->exec('PRAGMA foreign_keys=ON');
+
+        if ($needsInit) {
+            $this->initSchema();
+        }
     }
 
     /**
@@ -183,11 +188,7 @@ class Database
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
         $this->query($sql, array_values($data));
 
-        // Access ODBC: retrieve the last auto-increment ID.
-        // The standard lastInsertId() may not work with all ODBC drivers,
-        // so we fall back to SELECT @@IDENTITY which Access supports.
-        $result = $this->fetchOne("SELECT @@IDENTITY AS last_id");
-        return (int) ($result['last_id'] ?? 0);
+        return (int) $this->pdo->lastInsertId();
     }
 
     /**
@@ -341,7 +342,7 @@ class Database
     public function getCachedResponse(string $endpoint, string $paramsHash): ?string
     {
         $row = $this->fetchOne(
-            "SELECT response_data FROM api_cache WHERE endpoint = ? AND params_hash = ? AND expires_at > NOW()",
+            "SELECT response_data FROM api_cache WHERE endpoint = ? AND params_hash = ? AND expires_at > datetime('now')",
             [$endpoint, $paramsHash]
         );
 
@@ -387,7 +388,7 @@ class Database
      */
     public function purgeExpiredCache(): int
     {
-        $stmt = $this->query("DELETE FROM api_cache WHERE expires_at <= NOW()");
+        $stmt = $this->query("DELETE FROM api_cache WHERE expires_at <= datetime('now')");
         return $stmt->rowCount();
     }
 
@@ -423,5 +424,24 @@ class Database
     public function rollBack(): bool
     {
         return $this->pdo->rollBack();
+    }
+
+    // ========================================================================
+    // Schema Initialization
+    // ========================================================================
+
+    /**
+     * Creates all tables and seeds default settings.
+     * Called automatically when the SQLite file does not exist yet.
+     */
+    private function initSchema(): void
+    {
+        $schemaFile = __DIR__ . '/../db/schema.sql';
+        if (!file_exists($schemaFile)) {
+            throw new RuntimeException("Schema file not found: {$schemaFile}");
+        }
+
+        $sql = file_get_contents($schemaFile);
+        $this->pdo->exec($sql);
     }
 }

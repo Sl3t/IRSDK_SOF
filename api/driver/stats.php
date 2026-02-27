@@ -65,10 +65,9 @@ $driver['is_me'] = (bool) $driver['is_me'];
 // ---------------------------------------------------------------------------
 // Fetch recent sessions for this driver
 // ---------------------------------------------------------------------------
-// Note: Access does not support LIMIT/OFFSET. We use TOP and join manually.
 // ---------------------------------------------------------------------------
 
-$sql = "SELECT TOP {$limit}
+$sql = "SELECT
             sd.id AS session_driver_id,
             sd.session_id,
             sd.irating AS irating_at_time,
@@ -96,7 +95,8 @@ $sql = "SELECT TOP {$limit}
         FROM session_drivers AS sd
         INNER JOIN sessions AS s ON sd.session_id = s.id
         WHERE sd.driver_id = ?
-        ORDER BY s.created_at DESC";
+        ORDER BY s.created_at DESC
+        LIMIT {$limit}";
 
 $recentSessions = $db->fetchAll($sql, [(int) $driverId]);
 

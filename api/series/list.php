@@ -55,7 +55,7 @@ $sql = "SELECT
         FROM favorite_series";
 
 if ($category !== null && $category !== '') {
-    $sql     .= " WHERE LCASE(category) = ?";
+    $sql     .= " WHERE LOWER(category) = ?";
     $params[] = strtolower($category);
 }
 
@@ -64,7 +64,7 @@ $sql .= " ORDER BY series_name ASC";
 $series = $db->fetchAll($sql, $params);
 
 // ---------------------------------------------------------------------------
-// Format boolean fields (Access YESNO returns -1/0)
+// Format boolean fields
 // ---------------------------------------------------------------------------
 
 foreach ($series as &$row) {

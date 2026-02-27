@@ -59,7 +59,7 @@ if ($driver === null) {
             id, iracing_user_id, user_name, current_irating, current_sr,
             license_class, club_name, division, is_me, tag, notes, updated_at
         FROM drivers
-        WHERE is_me = TRUE"
+        WHERE is_me = 1"
     );
 }
 
@@ -78,11 +78,12 @@ $driver['is_me'] = (bool) $driver['is_me'];
 // ---------------------------------------------------------------------------
 
 $history = $db->fetchAll(
-    "SELECT TOP 50
+    "SELECT
         id, irating, sr, series_name, track_name, sof,
         finish_position, irating_change, recorded_at
     FROM irating_history
-    ORDER BY recorded_at DESC"
+    ORDER BY recorded_at DESC
+    LIMIT 50"
 );
 
 // ---------------------------------------------------------------------------

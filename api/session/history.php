@@ -67,87 +67,45 @@ $countRow = $db->fetchOne($countSql, $countParams);
 $total    = (int) ($countRow['total'] ?? 0);
 
 // ---------------------------------------------------------------------------
-// Fetch sessions with driver count summary
-// ---------------------------------------------------------------------------
-// Note: Microsoft Access does not support LIMIT/OFFSET natively in all
-// ODBC configurations. We use TOP for the limit and handle offset in PHP
-// when needed. For offset > 0, we fetch a larger set and slice.
+// Fetch sessions
 // ---------------------------------------------------------------------------
 
-if ($offset === 0) {
-    // Simple TOP query when no offset is needed.
-    $sql = "SELECT TOP {$limit}
-                s.id,
-                s.iracing_subsession_id,
-                s.session_type,
-                s.is_official,
-                s.series_id,
-                s.series_name,
-                s.track_name,
-                s.track_config,
-                s.car_class,
-                s.sof,
-                s.driver_count,
-                s.min_irating,
-                s.max_irating,
-                s.median_irating,
-                s.std_dev_irating,
-                s.my_irating_at_time,
-                s.track_temp_c,
-                s.air_temp_c,
-                s.track_wetness,
-                s.weather_declared_wet,
-                s.grip_state,
-                s.skies,
-                s.wind_speed_ms,
-                s.humidity_pct,
-                s.decision,
-                s.decision_score,
-                s.created_at
-            FROM sessions AS s
-            {$whereClause}
-            ORDER BY s.created_at DESC";
-    $sessions = $db->fetchAll($sql, $params);
-} else {
-    // Access workaround: fetch top (offset + limit) rows, then skip offset.
-    $fetchCount = $offset + $limit;
-    $sql = "SELECT TOP {$fetchCount}
-                s.id,
-                s.iracing_subsession_id,
-                s.session_type,
-                s.is_official,
-                s.series_id,
-                s.series_name,
-                s.track_name,
-                s.track_config,
-                s.car_class,
-                s.sof,
-                s.driver_count,
-                s.min_irating,
-                s.max_irating,
-                s.median_irating,
-                s.std_dev_irating,
-                s.my_irating_at_time,
-                s.track_temp_c,
-                s.air_temp_c,
-                s.track_wetness,
-                s.weather_declared_wet,
-                s.grip_state,
-                s.skies,
-                s.wind_speed_ms,
-                s.humidity_pct,
-                s.decision,
-                s.decision_score,
-                s.created_at
-            FROM sessions AS s
-            {$whereClause}
-            ORDER BY s.created_at DESC";
-    $allRows  = $db->fetchAll($sql, $params);
-    $sessions = array_slice($allRows, $offset, $limit);
-}
+$sql = "SELECT
+            s.id,
+            s.iracing_subsession_id,
+            s.session_type,
+            s.is_official,
+            s.series_id,
+            s.series_name,
+            s.track_name,
+            s.track_config,
+            s.car_class,
+            s.sof,
+            s.driver_count,
+            s.min_irating,
+            s.max_irating,
+            s.median_irating,
+            s.std_dev_irating,
+            s.my_irating_at_time,
+            s.track_temp_c,
+            s.air_temp_c,
+            s.track_wetness,
+            s.weather_declared_wet,
+            s.grip_state,
+            s.skies,
+            s.wind_speed_ms,
+            s.humidity_pct,
+            s.decision,
+            s.decision_score,
+            s.created_at
+        FROM sessions AS s
+        {$whereClause}
+        ORDER BY s.created_at DESC
+        LIMIT {$limit} OFFSET {$offset}";
+$sessions = $db->fetchAll($sql, $params);
 
 // ---------------------------------------------------------------------------
-// Format boolean fields (Access YESNO returns -1/0)
+// Format boolean fields
 // ---------------------------------------------------------------------------
 
 foreach ($sessions as &$session) {
