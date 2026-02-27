@@ -27,8 +27,8 @@ const SettingsPage = (() => {
   // =========================================================================
 
   const DEFAULTS = {
-    my_user_id:       '',
-    my_name:          '',
+    my_iracing_user_id: '',
+    my_name:            '',
     irating_target:   2500,
     sr_minimum:       3.0,
     oauth_client_id:  '',
@@ -130,7 +130,7 @@ const SettingsPage = (() => {
             Identity
           </h4>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);">
-            ${_inputField('my_user_id', 'iRacing User ID', val('my_user_id'), 'text', '123456')}
+            ${_inputField('my_iracing_user_id', 'iRacing User ID', val('my_iracing_user_id'), 'text', '677180')}
             ${_inputField('my_name', 'Display Name', val('my_name'), 'text', 'Your Name')}
           </div>
         </div>
@@ -165,8 +165,8 @@ const SettingsPage = (() => {
           </h4>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
                       margin-bottom:var(--spacing-md);">
-            ${_inputField('oauth_client_id', 'Client ID', val('oauth_client_id'), 'password', 'client_id')}
-            ${_inputField('oauth_client_secret', 'Client Secret', val('oauth_client_secret'), 'password', 'client_secret')}
+            ${_inputField('oauth_client_id', 'Email iRacing', val('oauth_client_id'), 'text', 'email@example.com')}
+            ${_inputField('oauth_client_secret', 'Mot de passe iRacing', val('oauth_client_secret'), 'password', 'mot de passe')}
           </div>
           <button onclick="SettingsPage.testApiConnection()"
                   style="padding:var(--spacing-xs) var(--spacing-md);
