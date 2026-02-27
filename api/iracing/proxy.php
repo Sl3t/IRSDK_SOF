@@ -201,6 +201,7 @@ function refreshAuth(): bool
         'client_id'     => $clientId,
         'client_secret' => $maskedSecret,
         'refresh_token' => $refreshToken,
+        'scope'         => 'iracing.auth',
     ]);
 
     $ch = curl_init();

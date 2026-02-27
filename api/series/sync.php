@@ -68,6 +68,7 @@ function _reAuth(): bool
             'client_secret' => $maskedSecret,
             'username'      => $email,
             'password'      => $maskedPwd,
+            'scope'         => 'iracing.auth',
         ]),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,

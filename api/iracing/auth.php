@@ -72,6 +72,7 @@ if ($grantType === 'refresh_token') {
         'client_id'     => $clientId,
         'client_secret' => $maskedSecret,
         'refresh_token' => $refreshToken,
+        'scope'         => 'iracing.auth',
     ]);
 } else {
     // ---- Password Limited flow ----
@@ -128,6 +129,7 @@ if ($grantType === 'refresh_token') {
         'client_secret' => $maskedSecret,
         'username'      => $iracingEmail,
         'password'      => $maskedPassword,
+        'scope'         => 'iracing.auth',
     ]);
 }
 
