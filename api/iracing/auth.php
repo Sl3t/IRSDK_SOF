@@ -62,10 +62,15 @@ if ($grantType === 'refresh_token') {
     $clientId     = _decrypt($db->getSetting('oauth_client_id') ?? '', $key);
     $clientSecret = _decrypt($db->getSetting('oauth_client_secret') ?? '', $key);
 
+    // Mask the secret: base64(sha256_raw(secret + lowercase(trim(client_id))))
+    $maskedSecret = base64_encode(
+        hash('sha256', $clientSecret . strtolower(trim($clientId)), true)
+    );
+
     $postFields = http_build_query([
         'grant_type'    => 'refresh_token',
         'client_id'     => $clientId,
-        'client_secret' => $clientSecret,
+        'client_secret' => $maskedSecret,
         'refresh_token' => $refreshToken,
     ]);
 } else {
@@ -107,12 +112,22 @@ if ($grantType === 'refresh_token') {
     $db->setSetting('iracing_email', _encrypt($iracingEmail, $key));
     $db->setSetting('iracing_password', _encrypt($iracingPassword, $key));
 
+    // iRacing requires SHA-256 masking with standard Base64 (NOT URL-safe)
+    // Secret: base64(sha256_raw(secret + lowercase(trim(client_id))))
+    // Password: base64(sha256_raw(password + lowercase(trim(email))))
+    $maskedSecret = base64_encode(
+        hash('sha256', $oauthClientSecret . strtolower(trim($oauthClientId)), true)
+    );
+    $maskedPassword = base64_encode(
+        hash('sha256', $iracingPassword . strtolower(trim($iracingEmail)), true)
+    );
+
     $postFields = http_build_query([
         'grant_type'    => 'password_limited',
         'client_id'     => $oauthClientId,
-        'client_secret' => $oauthClientSecret,
+        'client_secret' => $maskedSecret,
         'username'      => $iracingEmail,
-        'password'      => $iracingPassword,
+        'password'      => $maskedPassword,
     ]);
 }
 

@@ -191,10 +191,15 @@ function refreshAuth(): bool
         return false;
     }
 
+    // Mask the secret: base64(sha256_raw(secret + lowercase(trim(client_id))))
+    $maskedSecret = base64_encode(
+        hash('sha256', $clientSecret . strtolower(trim($clientId)), true)
+    );
+
     $postFields = http_build_query([
         'grant_type'    => 'refresh_token',
         'client_id'     => $clientId,
-        'client_secret' => $clientSecret,
+        'client_secret' => $maskedSecret,
         'refresh_token' => $refreshToken,
     ]);
 
