@@ -72,15 +72,33 @@ const App = (() => {
   // =========================================================================
 
   /**
-   * Safely retrieve a page module from the global scope.
+   * Lazy-initialized registry for page modules.
+   * Needed because `const` declarations at global scope do not create
+   * properties on `window`, so window[name] lookup fails.
+   */
+  let _pageRegistry = null;
+
+  /**
+   * Safely retrieve a page module.
    * Returns a stub with a render() method that shows an error if not found.
    *
    * @param {string} name - Global name of the page module (e.g. "DashboardPage")
    * @returns {object} The page module or an error stub
    */
   function _getPage(name) {
-    if (typeof window[name] !== 'undefined') {
-      return window[name];
+    if (!_pageRegistry) {
+      _pageRegistry = {
+        ...(typeof DashboardPage !== 'undefined' && { DashboardPage }),
+        ...(typeof SeriesPage !== 'undefined' && { SeriesPage }),
+        ...(typeof SessionPage !== 'undefined' && { SessionPage }),
+        ...(typeof DriverPage !== 'undefined' && { DriverPage }),
+        ...(typeof ProfilePage !== 'undefined' && { ProfilePage }),
+        ...(typeof HistoryPage !== 'undefined' && { HistoryPage }),
+        ...(typeof SettingsPage !== 'undefined' && { SettingsPage }),
+      };
+    }
+    if (_pageRegistry[name]) {
+      return _pageRegistry[name];
     }
     console.warn(`[App] Page module "${name}" not found. Is the script loaded?`);
     return {
