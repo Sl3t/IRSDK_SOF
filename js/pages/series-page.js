@@ -230,13 +230,20 @@ const SeriesPage = (() => {
 
     try {
       const result = await api.syncSeries('road');
+      console.log('[series] Sync result:', result);
       if (result && result.success) {
-        if (resultEl) {
-          resultEl.textContent = result.message || `${result.total} series synced`;
-          resultEl.style.color = 'var(--accent-green)';
+        let msg = result.message || `${result.total} series synced`;
+        if (result.total === 0 && result.debug) {
+          msg += ` [debug: ${result.debug.data_count} items, keys: ${JSON.stringify(result.debug.first_item_keys)}]`;
         }
-        // Reload series list
-        await render();
+        if (resultEl) {
+          resultEl.textContent = msg;
+          resultEl.style.color = result.total > 0 ? 'var(--accent-green)' : 'var(--accent-orange, orange)';
+        }
+        if (result.total > 0) {
+          // Reload series list
+          await render();
+        }
       } else {
         if (resultEl) {
           resultEl.textContent = result?.message || 'Sync failed';

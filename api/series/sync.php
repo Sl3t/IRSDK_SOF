@@ -193,17 +193,77 @@ if (!is_array($data)) {
 }
 
 // ============================================================================
-// Map category names from iRacing to our schema
+// Map category_id from iRacing to our schema
+// iRacing category_id: 1=Oval, 2=Road, 3=Dirt Oval, 4=Dirt Road,
+//                      5=Sports Car, 6=Formula Car
 // ============================================================================
 
-$categoryMap = [
-    'road'      => 'road',
-    'oval'      => 'oval',
-    'dirt_road'  => 'dirt_road',
-    'dirt_oval'  => 'dirt_oval',
-    'sports_car' => 'road',
-    'formula_car' => 'road',
+$categoryIdMap = [
+    1 => 'oval',
+    2 => 'road',
+    3 => 'dirt_oval',
+    4 => 'dirt_road',
+    5 => 'road',       // Sports Car → road
+    6 => 'road',       // Formula Car → road
 ];
+
+$categoryNameMap = [
+    'road'         => 'road',
+    'oval'         => 'oval',
+    'dirt_road'    => 'dirt_road',
+    'dirt_oval'    => 'dirt_oval',
+    'sports_car'   => 'road',
+    'formula_car'  => 'road',
+    'sports car'   => 'road',
+    'formula car'  => 'road',
+];
+
+/**
+ * Extract the minimum license group from the allowed_licenses array.
+ * Each entry has: group_name, min_license_level, max_license_level, etc.
+ * Returns one of: R, D, C, B, A, or '' if unknown.
+ */
+function _extractLicenseGroup(array $series): string
+{
+    // Method 1: Parse allowed_licenses array (preferred)
+    if (!empty($series['allowed_licenses']) && is_array($series['allowed_licenses'])) {
+        $minLevel = PHP_INT_MAX;
+        foreach ($series['allowed_licenses'] as $lic) {
+            if (isset($lic['min_license_level'])) {
+                $minLevel = min($minLevel, (int)$lic['min_license_level']);
+            }
+            // Also check group_name directly
+            if (isset($lic['group_name'])) {
+                $gn = strtolower(trim($lic['group_name']));
+                if (str_contains($gn, 'rookie')) return 'R';
+            }
+        }
+        if ($minLevel < PHP_INT_MAX) {
+            if ($minLevel >= 18) return 'A';
+            if ($minLevel >= 14) return 'B';
+            if ($minLevel >= 10) return 'C';
+            if ($minLevel >= 6)  return 'D';
+            return 'R';
+        }
+    }
+
+    // Method 2: Direct min_license_level field (fallback)
+    if (isset($series['min_license_level'])) {
+        $level = (int)$series['min_license_level'];
+        if ($level >= 18) return 'A';
+        if ($level >= 14) return 'B';
+        if ($level >= 10) return 'C';
+        if ($level >= 6)  return 'D';
+        return 'R';
+    }
+
+    // Method 3: license_group field (fallback)
+    if (isset($series['license_group'])) {
+        return (string)$series['license_group'];
+    }
+
+    return '';
+}
 
 // ============================================================================
 // Insert/update series in the database
@@ -212,22 +272,45 @@ $categoryMap = [
 $inserted = 0;
 $updated  = 0;
 $skipped  = 0;
+$errors   = 0;
 
 $now = date('Y-m-d H:i:s');
 
-foreach ($data as $series) {
-    $seriesId   = (int)($series['series_id'] ?? $series['series_short_name_id'] ?? 0);
+// Handle non-sequential array (associative top-level keys)
+// Some iRacing responses might wrap series in a key
+$seriesList = $data;
+if (!isset($data[0]) && is_array($data)) {
+    // Try common wrapper keys
+    foreach (['series', 'data', 'results'] as $wrapperKey) {
+        if (isset($data[$wrapperKey]) && is_array($data[$wrapperKey])) {
+            $seriesList = $data[$wrapperKey];
+            break;
+        }
+    }
+}
+
+foreach ($seriesList as $series) {
+    // Skip non-array entries (e.g. metadata keys in response)
+    if (!is_array($series)) continue;
+
+    $seriesId   = (int)($series['series_id'] ?? 0);
     $seriesName = $series['series_name'] ?? $series['series_short_name'] ?? 'Unknown';
 
-    // Determine category
-    $rawCategory = strtolower($series['category'] ?? '');
-    if (empty($rawCategory)) {
-        // Try category_id: 1=oval, 2=road, 3=dirt_oval, 4=dirt_road
-        $catId = (int)($series['category_id'] ?? 0);
-        $catMap = [1 => 'oval', 2 => 'road', 3 => 'dirt_oval', 4 => 'dirt_road'];
-        $rawCategory = $catMap[$catId] ?? 'road';
+    if ($seriesId <= 0) continue;
+
+    // Determine category from category_id first, then category string
+    $seriesCategory = '';
+    $catId = (int)($series['category_id'] ?? 0);
+    if ($catId > 0 && isset($categoryIdMap[$catId])) {
+        $seriesCategory = $categoryIdMap[$catId];
+    } else {
+        $rawCategory = strtolower(trim($series['category'] ?? ''));
+        $seriesCategory = $categoryNameMap[$rawCategory] ?? $rawCategory;
     }
-    $seriesCategory = $categoryMap[$rawCategory] ?? $rawCategory;
+
+    if (empty($seriesCategory)) {
+        $seriesCategory = 'road'; // default
+    }
 
     // Filter by category if specified
     if ($category !== '' && $seriesCategory !== $category) {
@@ -235,49 +318,64 @@ foreach ($data as $series) {
         continue;
     }
 
-    // Determine license group
-    $licenseGroup = '';
-    if (isset($series['min_license_level'])) {
-        $level = (int)$series['min_license_level'];
-        if ($level >= 18) $licenseGroup = 'A';
-        elseif ($level >= 14) $licenseGroup = 'B';
-        elseif ($level >= 10) $licenseGroup = 'C';
-        elseif ($level >= 6)  $licenseGroup = 'D';
-        else $licenseGroup = 'R';
-    } elseif (isset($series['license_group'])) {
-        $licenseGroup = $series['license_group'];
-    }
+    // Determine license group from allowed_licenses or fallbacks
+    $licenseGroup = _extractLicenseGroup($series);
 
-    if ($seriesId <= 0) continue;
-
-    // Check if series already exists
-    $existing = $db->fetchOne(
-        "SELECT id FROM favorite_series WHERE iracing_series_id = ?",
-        [$seriesId]
-    );
-
-    if ($existing) {
-        $db->execute(
-            "UPDATE favorite_series SET series_name = ?, category = ?, license_group = ?, updated_at = ?
-             WHERE iracing_series_id = ?",
-            [$seriesName, $seriesCategory, $licenseGroup, $now, $seriesId]
+    try {
+        // Check if series already exists
+        $existing = $db->fetchOne(
+            "SELECT id FROM favorite_series WHERE iracing_series_id = ?",
+            [$seriesId]
         );
-        $updated++;
-    } else {
-        $db->execute(
-            "INSERT INTO favorite_series (iracing_series_id, series_name, category, license_group, is_favorite, updated_at)
-             VALUES (?, ?, ?, ?, 0, ?)",
-            [$seriesId, $seriesName, $seriesCategory, $licenseGroup, $now]
-        );
-        $inserted++;
+
+        if ($existing) {
+            $db->query(
+                "UPDATE favorite_series SET series_name = ?, category = ?, license_group = ?, updated_at = ?
+                 WHERE iracing_series_id = ?",
+                [$seriesName, $seriesCategory, $licenseGroup, $now, $seriesId]
+            );
+            $updated++;
+        } else {
+            $db->query(
+                "INSERT INTO favorite_series (iracing_series_id, series_name, category, license_group, is_favorite, updated_at)
+                 VALUES (?, ?, ?, ?, 0, ?)",
+                [$seriesId, $seriesName, $seriesCategory, $licenseGroup, $now]
+            );
+            $inserted++;
+        }
+    } catch (Throwable $e) {
+        $errors++;
+        if (DEBUG_MODE) {
+            error_log("[sync] Error inserting series {$seriesId}: {$e->getMessage()}");
+        }
     }
 }
 
-jsonResponse([
+$responseData = [
     'success'  => true,
     'inserted' => $inserted,
     'updated'  => $updated,
     'skipped'  => $skipped,
     'total'    => $inserted + $updated,
     'message'  => "Synced {$inserted} new + {$updated} updated series from iRacing.",
-]);
+];
+
+if ($errors > 0) {
+    $responseData['errors'] = $errors;
+}
+
+// Include debug info when no series were synced
+if ($inserted + $updated === 0 && DEBUG_MODE) {
+    $responseData['debug'] = [
+        'data_type'       => gettype($data),
+        'data_is_array'   => is_array($data),
+        'data_count'      => is_array($data) ? count($data) : 0,
+        'top_keys'        => is_array($data) ? array_slice(array_keys($data), 0, 10) : [],
+        'first_item_keys' => (is_array($data) && isset($data[0]) && is_array($data[0]))
+                             ? array_keys($data[0]) : 'N/A',
+        'series_list_count' => is_array($seriesList) ? count($seriesList) : 0,
+        'filter_category' => $category,
+    ];
+}
+
+jsonResponse($responseData);
