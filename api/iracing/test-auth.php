@@ -1,6 +1,6 @@
 <?php
 /**
- * Debug script — tests iRacing authentication and shows full details.
+ * Debug script — tests iRacing authentication with HTTP/1.1 and browser-like headers.
  * Run via: http://localhost/IRSDK_SOF/api/iracing/test-auth.php
  * DELETE after debugging.
  */
@@ -55,10 +55,15 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 20,
     CURLOPT_FOLLOWLOCATION => true,
     CURLOPT_POSTREDIR      => CURL_REDIR_POST_ALL,
-    CURLOPT_HEADER         => true,  // Include response headers
+    CURLOPT_HEADER         => true,
+    // Force HTTP/1.1 — CloudFront was rejecting HTTP/2 POST with 405
+    CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
     CURLOPT_HTTPHEADER     => [
         'Content-Type: application/json',
-        'User-Agent: IRSDK-SOF-Agent/1.0',
+        'Accept: application/json',
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Origin: https://members-ng.iracing.com',
+        'Referer: https://members-ng.iracing.com/',
     ],
     CURLOPT_COOKIEJAR      => $cookieFile,
     CURLOPT_COOKIEFILE     => $cookieFile,
@@ -92,9 +97,8 @@ echo json_encode([
     'request' => [
         'url'          => $tokenUrl,
         'method'       => 'POST',
-        'content_type' => 'application/json',
+        'http_version' => '1.1 (forced)',
         'email_used'   => '****' . substr($email, -8),
-        'body_preview' => mb_substr($postBody, 0, 100) . '...',
     ],
     'response' => [
         'http_code'      => $httpCode,
