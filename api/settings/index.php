@@ -40,11 +40,23 @@ $db = Database::getInstance();
 // List of keys that contain sensitive data and should be masked in GET
 // ============================================================================
 
-$sensitiveKeys = [
+// Keys masked in GET responses (show only last 4 chars)
+$maskedKeys = [
     'oauth_client_secret',
     'oauth_authcode',
     'oauth_access_token',
     'oauth_refresh_token',
+    'iracing_password',
+];
+
+// Keys encrypted before storage (superset — includes masked + visible encrypted)
+$encryptedKeys = [
+    'oauth_client_id',
+    'oauth_client_secret',
+    'oauth_authcode',
+    'oauth_access_token',
+    'oauth_refresh_token',
+    'iracing_email',
     'iracing_password',
 ];
 
@@ -63,8 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $value = $row['setting_value'];
 
             // Mask sensitive values — show only the last 4 characters
-            if (in_array($key, $sensitiveKeys, true) && !empty($value)) {
+            if (in_array($key, $maskedKeys, true) && !empty($value)) {
                 $settings[$key] = _maskValue($value);
+            } elseif (in_array($key, $encryptedKeys, true) && !empty($value)) {
+                // Decrypt visible encrypted keys (e.g. oauth_client_id, iracing_email)
+                try {
+                    $settings[$key] = _decrypt($value, _getEncryptionKey());
+                } catch (Throwable $e) {
+                    $settings[$key] = $value; // fallback to raw if not encrypted
+                }
             } else {
                 $settings[$key] = $value;
             }
@@ -104,8 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? json_encode($value, JSON_UNESCAPED_UNICODE)
                 : (string)$value;
 
-            // Encrypt sensitive values before storing
-            if (in_array($key, $sensitiveKeys, true) && !empty($strValue)) {
+            // Encrypt credentials before storing
+            if (in_array($key, $encryptedKeys, true) && !empty($strValue)) {
                 // Skip if the value looks like it is already masked (unchanged)
                 if (str_starts_with($strValue, '****')) {
                     continue; // Do not overwrite with the masked placeholder
