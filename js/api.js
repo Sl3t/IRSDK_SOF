@@ -139,12 +139,16 @@ const api = (() => {
         body: JSON.stringify(data),
       });
 
+      const body = await response.json();
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Return the parsed error body so callers can read the actual message
+        _updateApiDot(true); // API itself is reachable even if auth failed
+        return body;
       }
 
       _updateApiDot(true);
-      return await response.json();
+      return body;
 
     } catch (err) {
       console.error(`[api] POST ${endpoint} failed:`, err.message);

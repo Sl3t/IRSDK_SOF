@@ -26,6 +26,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../iracing/crypto.php';
 
 // Set CORS headers and handle preflight
 setCorsHeaders();
@@ -130,32 +131,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ============================================================================
-// Helper functions
+// Helper functions (encryption is in iracing/crypto.php)
 // ============================================================================
 
 /**
  * Mask a sensitive value, showing only the last 4 characters.
- * If the value is encrypted (Base64), it is decrypted first to get the
- * original plaintext length, but only the masked version is returned.
- *
- * @param  string $value The stored value (possibly encrypted)
- * @return string        Masked string like "****abcd"
  */
 function _maskValue(string $value): string
 {
-    // Try to decrypt to get the actual plaintext for proper masking
     try {
-        $key       = _getSettingsEncryptionKey();
-        $plaintext = _decryptValue($value, $key);
+        $key       = _getEncryptionKey();
+        $plaintext = _decrypt($value, $key);
         $len       = strlen($plaintext);
-
-        if ($len <= 4) {
-            return '****';
-        }
-
+        if ($len <= 4) return '****';
         return '****' . substr($plaintext, -4);
     } catch (Throwable $e) {
-        // If decryption fails, mask the raw stored value
         $len = strlen($value);
         if ($len <= 4) return '****';
         return '****' . substr($value, -4);
@@ -163,62 +153,9 @@ function _maskValue(string $value): string
 }
 
 /**
- * Encrypt a setting value using AES-256-CBC.
- *
- * @param  string $plaintext The value to encrypt
- * @return string            Base64-encoded ciphertext
+ * Encrypt a setting value using the shared encryption key.
  */
 function _encryptValue(string $plaintext): string
 {
-    $key    = _getSettingsEncryptionKey();
-    $cipher = 'aes-256-cbc';
-    $ivLen  = openssl_cipher_iv_length($cipher);
-    $iv     = openssl_random_pseudo_bytes($ivLen);
-
-    $encrypted = openssl_encrypt($plaintext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
-    if ($encrypted === false) {
-        throw new RuntimeException('Encryption failed.');
-    }
-
-    return base64_encode($iv . $encrypted);
-}
-
-/**
- * Decrypt a setting value using AES-256-CBC.
- *
- * @param  string $ciphertext Base64-encoded ciphertext
- * @param  string $key        Encryption key
- * @return string             Decrypted plaintext
- */
-function _decryptValue(string $ciphertext, string $key): string
-{
-    $cipher = 'aes-256-cbc';
-    $ivLen  = openssl_cipher_iv_length($cipher);
-    $raw    = base64_decode($ciphertext);
-
-    if ($raw === false || strlen($raw) < $ivLen) {
-        throw new RuntimeException('Invalid ciphertext format.');
-    }
-
-    $iv        = substr($raw, 0, $ivLen);
-    $encrypted = substr($raw, $ivLen);
-
-    $decrypted = openssl_decrypt($encrypted, $cipher, $key, OPENSSL_RAW_DATA, $iv);
-    if ($decrypted === false) {
-        throw new RuntimeException('Decryption failed.');
-    }
-
-    return $decrypted;
-}
-
-/**
- * Get the encryption key for settings values.
- * Derived from the database path for consistency with auth.php.
- *
- * @return string 32-byte encryption key
- */
-function _getSettingsEncryptionKey(): string
-{
-    $seed = DB_PATH . '::irsdk_sof_encryption_key';
-    return hash('sha256', $seed, true);
+    return _encrypt($plaintext, _getEncryptionKey());
 }

@@ -202,3 +202,9 @@ VALUES ('irating_target', '2500', datetime('now'));
 
 INSERT OR IGNORE INTO settings (setting_key, setting_value, updated_at)
 VALUES ('decision_weights', '{"sof_ratio":20,"position_estimate":15,"irating_gain":15,"field_quality":15,"danger_score":10,"track_conditions":10,"safety_rating":10,"participant_count":5}', datetime('now'));
+
+INSERT OR IGNORE INTO settings (setting_key, setting_value, updated_at)
+VALUES ('my_iracing_user_id', '677180', datetime('now'));
+
+INSERT OR IGNORE INTO settings (setting_key, setting_value, updated_at)
+VALUES ('my_name', 'Paul Lavoisiere', datetime('now'));

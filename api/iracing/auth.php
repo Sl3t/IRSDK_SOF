@@ -24,6 +24,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/crypto.php';
 
 // Set CORS headers and handle preflight
 setCorsHeaders();
@@ -37,9 +38,27 @@ $input = getJsonInput();
 $clientId     = trim($input['client_id'] ?? '');
 $clientSecret = trim($input['client_secret'] ?? '');
 
+// If credentials are masked (from a reloaded settings page), read stored ones from DB
+if (str_starts_with($clientId, '****') || str_starts_with($clientSecret, '****')
+    || empty($clientId) || empty($clientSecret)) {
+
+    $dbForCreds    = Database::getInstance();
+    $encKeyForCreds = _getEncryptionKey();
+
+    $storedId     = $dbForCreds->getSetting('oauth_client_id');
+    $storedSecret = $dbForCreds->getSetting('oauth_client_secret');
+
+    if ((str_starts_with($clientId, '****') || empty($clientId)) && !empty($storedId)) {
+        $clientId = _decrypt($storedId, $encKeyForCreds);
+    }
+    if ((str_starts_with($clientSecret, '****') || empty($clientSecret)) && !empty($storedSecret)) {
+        $clientSecret = _decrypt($storedSecret, $encKeyForCreds);
+    }
+}
+
 // Validate required fields
 if (empty($clientId) || empty($clientSecret)) {
-    jsonError('Both client_id and client_secret are required.', 400);
+    jsonError('Both client_id and client_secret are required. Enter your iRacing email and password.', 400);
 }
 
 // ============================================================================
@@ -128,7 +147,12 @@ try {
     } else {
         // Authentication failed
         $errorMsg = $data['message'] ?? $data['error'] ?? "HTTP {$httpCode}";
-        jsonError("Authentication failed: {$errorMsg}", 401);
+        $extra = [];
+        if (DEBUG_MODE) {
+            $extra['http_code'] = $httpCode;
+            $extra['raw_response'] = mb_substr((string)$response, 0, 500);
+        }
+        jsonError("Authentication failed: {$errorMsg}", 401, $extra);
     }
 
 } catch (Throwable $e) {
@@ -138,71 +162,4 @@ try {
     jsonError('An internal error occurred during authentication.', 500);
 }
 
-// ============================================================================
-// Encryption helpers
-// ============================================================================
-
-/**
- * Get or generate the encryption key for sensitive settings.
- * The key is stored in a file outside the web root or derived from
- * a constant. For simplicity in this local application, we use a
- * deterministic key derived from the database path.
- *
- * @return string 32-byte encryption key
- */
-function _getEncryptionKey(): string
-{
-    // Use a fixed key derivation — in production, use a proper key management system
-    $seed = DB_PATH . '::irsdk_sof_encryption_key';
-    return hash('sha256', $seed, true); // 32 bytes for AES-256
-}
-
-/**
- * Encrypt a plaintext string using AES-256-CBC.
- *
- * @param  string $plaintext The text to encrypt
- * @param  string $key       32-byte encryption key
- * @return string            Base64-encoded ciphertext (IV prepended)
- */
-function _encrypt(string $plaintext, string $key): string
-{
-    $cipher = 'aes-256-cbc';
-    $ivLen  = openssl_cipher_iv_length($cipher);
-    $iv     = openssl_random_pseudo_bytes($ivLen);
-
-    $encrypted = openssl_encrypt($plaintext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
-    if ($encrypted === false) {
-        throw new RuntimeException('Encryption failed.');
-    }
-
-    // Prepend IV to ciphertext for storage
-    return base64_encode($iv . $encrypted);
-}
-
-/**
- * Decrypt a Base64-encoded ciphertext string using AES-256-CBC.
- *
- * @param  string $ciphertext Base64-encoded ciphertext (IV prepended)
- * @param  string $key        32-byte encryption key
- * @return string             Decrypted plaintext
- */
-function _decrypt(string $ciphertext, string $key): string
-{
-    $cipher = 'aes-256-cbc';
-    $ivLen  = openssl_cipher_iv_length($cipher);
-    $raw    = base64_decode($ciphertext);
-
-    if ($raw === false || strlen($raw) < $ivLen) {
-        throw new RuntimeException('Invalid ciphertext.');
-    }
-
-    $iv        = substr($raw, 0, $ivLen);
-    $encrypted = substr($raw, $ivLen);
-
-    $decrypted = openssl_decrypt($encrypted, $cipher, $key, OPENSSL_RAW_DATA, $iv);
-    if ($decrypted === false) {
-        throw new RuntimeException('Decryption failed.');
-    }
-
-    return $decrypted;
-}
+// Encryption functions are in crypto.php (shared with proxy.php)

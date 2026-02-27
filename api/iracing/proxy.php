@@ -28,6 +28,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/crypto.php';
 
 // Set CORS headers and handle preflight
 setCorsHeaders();
@@ -196,7 +197,7 @@ function refreshAuth(): bool
     );
 
     $tokenUrl = IRACING_OAUTH_TOKEN_URL;
-    $postData = http_build_query([
+    $postData = json_encode([
         'email'    => $clientId,
         'password' => $encodedPassword,
     ]);
@@ -212,7 +213,7 @@ function refreshAuth(): bool
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/x-www-form-urlencoded',
+            'Content-Type: application/json',
         ],
         CURLOPT_COOKIEJAR      => $cookieFile,
         CURLOPT_COOKIEFILE     => $cookieFile,
@@ -251,8 +252,7 @@ function getCacheTTL(string $endpoint): int
     return CACHE_TTL_RACE_GUIDE;
 }
 
-// Reuse encryption helpers from auth.php
-require_once __DIR__ . '/auth.php';
+// Encryption helpers are loaded from crypto.php (shared)
 
 /**
  * Custom exception for 401 responses (triggers re-auth).
