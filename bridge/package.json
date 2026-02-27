@@ -8,7 +8,7 @@
     "setup": "npm install --ignore-scripts && node scripts/fix-bom.js && npm rebuild"
   },
   "dependencies": {
-    "node-irsdk": "^2.1.5",
+    "node-irsdk-2023": "github:hmiefert/node-irsdk-2023",
     "ws": "^8.16.0"
   },
   "engines": {

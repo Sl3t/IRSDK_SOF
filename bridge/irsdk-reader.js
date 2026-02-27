@@ -15,7 +15,7 @@
 'use strict';
 
 const EventEmitter = require('events');
-const irsdk = require('node-irsdk');
+const irsdk = require('node-irsdk-2023');
 
 const parseSession = require('./parsers/session-parser');
 const parseDrivers = require('./parsers/driver-parser');
