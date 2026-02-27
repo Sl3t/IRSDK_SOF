@@ -212,8 +212,10 @@ function refreshAuth(): bool
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_POSTREDIR      => CURL_REDIR_POST_ALL,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
+            'User-Agent: IRSDK-SOF-Agent/1.0',
         ],
         CURLOPT_COOKIEJAR      => $cookieFile,
         CURLOPT_COOKIEFILE     => $cookieFile,

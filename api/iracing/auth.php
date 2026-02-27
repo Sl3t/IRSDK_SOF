@@ -92,8 +92,11 @@ try {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
+        // Keep POST method through 301/302 redirects (prevents POST→GET conversion)
+        CURLOPT_POSTREDIR      => CURL_REDIR_POST_ALL,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
+            'User-Agent: IRSDK-SOF-Agent/1.0',
         ],
         // Enable cookie handling for iRacing session cookies
         CURLOPT_COOKIEJAR      => sys_get_temp_dir() . '/irsdk_sof_cookies.txt',
