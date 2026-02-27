@@ -109,7 +109,8 @@ const SeriesCard = (() => {
     const s = series || {};
     const id        = s.iracing_series_id || 0;
     const name      = s.series_name || 'Unknown Series';
-    const category  = s.category || 'Road';
+    const rawCat    = s.category || 'road';
+    const category  = rawCat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     const lic       = s.license_group || 'R';
     const track     = s.current_track || 'TBD';
     const sof       = s.last_sof_avg || 0;

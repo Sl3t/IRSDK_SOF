@@ -193,6 +193,12 @@ const api = (() => {
   const syncSeries = (category = 'road') => post('series/sync', { category });
 
   /**
+   * Enrich series with current track and schedule data.
+   * @returns {Promise<object|null>}
+   */
+  const enrichSeries = () => post('series/enrich', {});
+
+  /**
    * Get the user's favorite series.
    * @returns {Promise<object|null>}
    */
@@ -318,6 +324,7 @@ const api = (() => {
     getSessionHistory,
     getSeriesList,
     syncSeries,
+    enrichSeries,
     getSeriesFavorites,
     setSeriesFavorite,
     getSeriesSessions,

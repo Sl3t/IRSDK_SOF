@@ -229,27 +229,45 @@ const SeriesPage = (() => {
     if (resultEl) { resultEl.textContent = ''; resultEl.style.color = 'var(--accent-cyan)'; }
 
     try {
+      // Step 1: Sync series catalogue
+      if (resultEl) resultEl.textContent = 'Syncing series...';
       const result = await api.syncSeries('road');
       console.log('[series] Sync result:', result);
-      if (result && result.success) {
-        let msg = result.message || `${result.total} series synced`;
-        if (result.total === 0 && result.debug) {
-          msg += ` [debug: ${result.debug.data_count} items, keys: ${JSON.stringify(result.debug.first_item_keys)}]`;
-        }
-        if (resultEl) {
-          resultEl.textContent = msg;
-          resultEl.style.color = result.total > 0 ? 'var(--accent-green)' : 'var(--accent-orange, orange)';
-        }
-        if (result.total > 0) {
-          // Reload series list
-          await render();
-        }
-      } else {
+
+      if (!result || !result.success) {
         if (resultEl) {
           resultEl.textContent = result?.message || 'Sync failed';
           resultEl.style.color = 'var(--accent-red)';
         }
+        return;
       }
+
+      let msg = result.message || `${result.total} series synced`;
+      if (result.total === 0 && result.debug) {
+        msg += ` [debug: ${result.debug.data_count} items, keys: ${JSON.stringify(result.debug.first_item_keys)}]`;
+      }
+
+      // Step 2: Enrich with track & schedule data
+      if (btn) btn.textContent = 'Loading tracks...';
+      if (resultEl) { resultEl.textContent = 'Fetching schedules...'; resultEl.style.color = 'var(--accent-cyan)'; }
+
+      const enrichResult = await api.enrichSeries();
+      console.log('[series] Enrich result:', enrichResult);
+
+      if (enrichResult && enrichResult.success && enrichResult.enriched > 0) {
+        msg += ` | ${enrichResult.enriched} tracks loaded`;
+      } else if (enrichResult && enrichResult.debug) {
+        msg += ` | tracks: 0 [${JSON.stringify(enrichResult.debug.first_item_keys || enrichResult.debug.first_season_keys || 'N/A')}]`;
+      }
+
+      if (resultEl) {
+        resultEl.textContent = msg;
+        resultEl.style.color = result.total > 0 ? 'var(--accent-green)' : 'var(--accent-orange, orange)';
+      }
+
+      // Reload series list with enriched data
+      await render();
+
     } catch (err) {
       if (resultEl) {
         resultEl.textContent = 'Error: ' + err.message;

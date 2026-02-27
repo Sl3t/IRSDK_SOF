@@ -34,6 +34,7 @@
     RewriteRule ^series/favorites/?$ series/favorites.php [L,QSA]
     RewriteRule ^series/sessions/?$ series/sessions.php [L,QSA]
     RewriteRule ^series/sync/?$ series/sync.php [L,QSA]
+    RewriteRule ^series/enrich/?$ series/enrich.php [L,QSA]
     RewriteRule ^series/debug-sync/?$ series/debug-sync.php [L,QSA]
 
     # Route /api/session/* endpoints
