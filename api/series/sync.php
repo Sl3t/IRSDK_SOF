@@ -167,8 +167,8 @@ if ($httpCode >= 400) {
 
 $data = json_decode($response, true);
 
-// iRacing may return { "link": "https://..." } — follow it
-if (is_array($data) && isset($data['link']) && count($data) === 1) {
+// iRacing returns { "link": "https://...", "expires": "..." } — follow the link
+if (is_array($data) && isset($data['link'])) {
     $ch2 = curl_init();
     curl_setopt_array($ch2, [
         CURLOPT_URL            => $data['link'],

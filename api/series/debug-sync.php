@@ -64,7 +64,7 @@ $step1 = json_decode($response, true);
 
 // Follow link if needed
 $step2 = null;
-if (is_array($step1) && isset($step1['link']) && count($step1) === 1) {
+if (is_array($step1) && isset($step1['link'])) {
     $ch2 = curl_init();
     curl_setopt_array($ch2, [
         CURLOPT_URL            => $step1['link'],

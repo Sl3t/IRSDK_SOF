@@ -130,9 +130,9 @@ function makeIRacingRequest(string $endpoint, array $params, string $accessToken
         throw new RuntimeException("iRacing API returned HTTP {$httpCode}: " . mb_substr($response, 0, 300));
     }
 
-    // iRacing sometimes returns { "link": "https://..." } — follow it
+    // iRacing returns { "link": "https://...", "expires": "..." } — follow the link
     $decoded = json_decode($response, true);
-    if (is_array($decoded) && isset($decoded['link']) && count($decoded) === 1) {
+    if (is_array($decoded) && isset($decoded['link'])) {
         return _followLink($decoded['link']);
     }
 
