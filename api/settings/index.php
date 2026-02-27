@@ -44,6 +44,10 @@ $sensitiveKeys = [
     'oauth_client_id',
     'oauth_client_secret',
     'oauth_authcode',
+    'oauth_access_token',
+    'oauth_refresh_token',
+    'iracing_email',
+    'iracing_password',
 ];
 
 // ============================================================================

@@ -2,23 +2,12 @@
 /**
  * IRSDK SOF Agent — iRacing API Proxy with Caching
  *
- * Proxies requests to the iRacing Data API, handling OAuth2 token refresh
- * and caching responses in the api_cache table to respect rate limits.
+ * Proxies requests to the iRacing Data API using OAuth 2.0 Bearer tokens.
+ * Handles token refresh and caches responses in the api_cache table.
  *
  * Method: GET
  * Parameters:
  *   ?endpoint=/data/series/get&param1=value1&param2=value2...
- *
- * The "endpoint" parameter specifies the iRacing API path to call.
- * All other query parameters are forwarded to the iRacing API.
- *
- * Response: The raw JSON data from the iRacing API, cached if applicable.
- *
- * Cache behavior:
- *   - Checks api_cache table for a valid (non-expired) cached response
- *   - If cached: returns the cached data immediately
- *   - If not cached: calls the iRacing API, caches the response, returns it
- *   - On 401: attempts to refresh the OAuth token and retries once
  *
  * @package IRSDK_SOF
  */
@@ -55,14 +44,12 @@ $db = Database::getInstance();
 try {
     $cached = $db->getCachedResponse($endpoint, $cacheHash);
     if ($cached !== null) {
-        // Return cached response directly
         header('X-Cache: HIT');
         header('Content-Type: application/json; charset=utf-8');
         echo $cached;
         exit;
     }
 } catch (Throwable $e) {
-    // Cache miss or error — proceed to live API call
     if (DEBUG_MODE) {
         error_log("[proxy] Cache lookup error: {$e->getMessage()}");
     }
@@ -71,36 +58,58 @@ try {
 header('X-Cache: MISS');
 
 // ============================================================================
-// Load authentication credentials
+// Helper: get valid Bearer token
 // ============================================================================
 
 /**
- * Load the stored OAuth credentials and make an authenticated request.
- * Returns the raw response body or throws on failure.
+ * Returns a valid access token, refreshing if expired.
+ * @return string Bearer access token
+ * @throws RuntimeException if no valid token available
  */
-function makeIRacingRequest(string $endpoint, array $params): string
+function getAccessToken(): string
+{
+    $db  = Database::getInstance();
+    $key = _getEncryptionKey();
+
+    // Check if current token is still valid
+    $expiresAt = $db->getSetting('oauth_token_expires_at');
+    $encToken  = $db->getSetting('oauth_access_token');
+
+    if ($encToken && $expiresAt && strtotime($expiresAt) > time()) {
+        return _decrypt($encToken, $key);
+    }
+
+    // Try to refresh
+    if (refreshAuth()) {
+        $encToken = $db->getSetting('oauth_access_token');
+        if ($encToken) {
+            return _decrypt($encToken, $key);
+        }
+    }
+
+    throw new RuntimeException('No valid access token. Please authenticate in Settings.');
+}
+
+/**
+ * Make an authenticated request to the iRacing Data API.
+ */
+function makeIRacingRequest(string $endpoint, array $params, string $accessToken): string
 {
     $baseUrl = IRACING_API_BASE_URL;
-
-    // Build the full URL with query parameters
     $queryString = !empty($params) ? '?' . http_build_query($params) : '';
     $url = $baseUrl . $endpoint . $queryString;
 
-    // Cookie file for iRacing session authentication
-    $cookieFile = sys_get_temp_dir() . '/irsdk_sof_cookies.txt';
-
-    // Make the API request
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 30,
         CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_HTTPHEADER     => [
             'Accept: application/json',
+            "Authorization: Bearer {$accessToken}",
         ],
-        CURLOPT_COOKIEFILE     => $cookieFile,
-        CURLOPT_COOKIEJAR      => $cookieFile,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
@@ -114,15 +123,14 @@ function makeIRacingRequest(string $endpoint, array $params): string
     }
 
     if ($httpCode === 401) {
-        throw new UnauthorizedException('Authentication expired or invalid.');
+        throw new UnauthorizedException('Bearer token expired or invalid.');
     }
 
     if ($httpCode >= 400) {
-        throw new RuntimeException("iRacing API returned HTTP {$httpCode}: {$response}");
+        throw new RuntimeException("iRacing API returned HTTP {$httpCode}: " . mb_substr($response, 0, 300));
     }
 
-    // iRacing sometimes returns a link object pointing to the actual data
-    // e.g. { "link": "https://..." } — follow the link to get the real data
+    // iRacing sometimes returns { "link": "https://..." } — follow it
     $decoded = json_decode($response, true);
     if (is_array($decoded) && isset($decoded['link']) && count($decoded) === 1) {
         return _followLink($decoded['link']);
@@ -133,11 +141,6 @@ function makeIRacingRequest(string $endpoint, array $params): string
 
 /**
  * Follow a redirect link returned by the iRacing API.
- * Some endpoints return { "link": "https://s3.amazonaws.com/..." } and
- * the actual data is at that URL.
- *
- * @param  string $url The redirect URL
- * @return string      The response body from the redirect
  */
 function _followLink(string $url): string
 {
@@ -158,7 +161,6 @@ function _followLink(string $url): string
     if ($response === false) {
         throw new RuntimeException("Link follow failed: {$curlError}");
     }
-
     if ($httpCode >= 400) {
         throw new RuntimeException("Link returned HTTP {$httpCode}");
     }
@@ -167,58 +169,47 @@ function _followLink(string $url): string
 }
 
 /**
- * Attempt to re-authenticate with iRacing using stored credentials.
- * This refreshes the session cookie used for API requests.
- *
- * @return bool True if re-authentication succeeded
+ * Refresh the OAuth token using the stored refresh token.
  */
 function refreshAuth(): bool
 {
     $db  = Database::getInstance();
     $key = _getEncryptionKey();
 
-    $encId     = $db->getSetting('oauth_client_id');
-    $encSecret = $db->getSetting('oauth_client_secret');
+    $encRefresh = $db->getSetting('oauth_refresh_token');
+    if (!$encRefresh) return false;
 
-    if (!$encId || !$encSecret) {
-        return false;
-    }
+    $encClientId     = $db->getSetting('oauth_client_id');
+    $encClientSecret = $db->getSetting('oauth_client_secret');
+    if (!$encClientId || !$encClientSecret) return false;
 
     try {
-        $clientId     = _decrypt($encId, $key);
-        $clientSecret = _decrypt($encSecret, $key);
+        $refreshToken = _decrypt($encRefresh, $key);
+        $clientId     = _decrypt($encClientId, $key);
+        $clientSecret = _decrypt($encClientSecret, $key);
     } catch (Throwable $e) {
         return false;
     }
 
-    // Re-authenticate
-    $encodedPassword = base64_encode(
-        hash('sha256', $clientSecret . strtolower($clientId), true)
-    );
-
-    $tokenUrl = IRACING_OAUTH_TOKEN_URL;
-    $postData = json_encode([
-        'email'    => $clientId,
-        'password' => $encodedPassword,
+    $postFields = http_build_query([
+        'grant_type'    => 'refresh_token',
+        'client_id'     => $clientId,
+        'client_secret' => $clientSecret,
+        'refresh_token' => $refreshToken,
     ]);
-
-    $cookieFile = sys_get_temp_dir() . '/irsdk_sof_cookies.txt';
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL            => $tokenUrl,
+        CURLOPT_URL            => IRACING_OAUTH_TOKEN_URL,
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $postData,
+        CURLOPT_POSTFIELDS     => $postFields,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_POSTREDIR      => CURL_REDIR_POST_ALL,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'User-Agent: IRSDK-SOF-Agent/1.0',
+            'Content-Type: application/x-www-form-urlencoded',
+            'Accept: application/json',
         ],
-        CURLOPT_COOKIEJAR      => $cookieFile,
-        CURLOPT_COOKIEFILE     => $cookieFile,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
@@ -227,8 +218,18 @@ function refreshAuth(): bool
     curl_close($ch);
 
     if ($httpCode >= 200 && $httpCode < 300) {
-        $db->setSetting('oauth_authenticated_at', now());
-        return true;
+        $data = json_decode($response, true);
+        if (!empty($data['access_token'])) {
+            $db->setSetting('oauth_access_token', _encrypt($data['access_token'], $key));
+            $db->setSetting('oauth_authenticated_at', now());
+            $expiresIn = (int)($data['expires_in'] ?? 600);
+            $db->setSetting('oauth_token_expires_at', date('Y-m-d H:i:s', time() + $expiresIn));
+
+            if (!empty($data['refresh_token'])) {
+                $db->setSetting('oauth_refresh_token', _encrypt($data['refresh_token'], $key));
+            }
+            return true;
+        }
     }
 
     return false;
@@ -236,29 +237,17 @@ function refreshAuth(): bool
 
 /**
  * Determine the cache TTL for a given endpoint path.
- * Uses constants from config.php, which can be overridden in settings.
- *
- * @param  string $endpoint The iRacing API endpoint path
- * @return int              TTL in seconds
  */
 function getCacheTTL(string $endpoint): int
 {
-    // Match endpoint patterns to TTL values
     if (str_contains($endpoint, '/data/series'))           return CACHE_TTL_SERIES;
     if (str_contains($endpoint, '/data/member/profile'))   return CACHE_TTL_MEMBER_PROFILE;
     if (str_contains($endpoint, '/data/results'))          return CACHE_TTL_RESULTS;
     if (str_contains($endpoint, '/data/stats'))            return CACHE_TTL_DRIVER_STATS;
     if (str_contains($endpoint, '/data/season'))           return CACHE_TTL_SEASON_RESULTS;
-
-    // Default: race guide TTL (short)
     return CACHE_TTL_RACE_GUIDE;
 }
 
-// Encryption helpers are loaded from crypto.php (shared)
-
-/**
- * Custom exception for 401 responses (triggers re-auth).
- */
 class UnauthorizedException extends RuntimeException {}
 
 // ============================================================================
@@ -266,12 +255,14 @@ class UnauthorizedException extends RuntimeException {}
 // ============================================================================
 
 try {
-    $responseData = makeIRacingRequest($endpoint, $params);
+    $accessToken  = getAccessToken();
+    $responseData = makeIRacingRequest($endpoint, $params, $accessToken);
 } catch (UnauthorizedException $e) {
-    // Try refreshing authentication and retry once
+    // Try refreshing and retry once
     if (refreshAuth()) {
         try {
-            $responseData = makeIRacingRequest($endpoint, $params);
+            $newToken     = _decrypt($db->getSetting('oauth_access_token'), _getEncryptionKey());
+            $responseData = makeIRacingRequest($endpoint, $params, $newToken);
         } catch (Throwable $retryErr) {
             jsonError("iRacing API error after re-auth: {$retryErr->getMessage()}", 502);
         }
@@ -290,13 +281,11 @@ try {
     $ttl = getCacheTTL($endpoint);
     $db->setCachedResponse($endpoint, $cacheHash, $responseData, $ttl);
 } catch (Throwable $e) {
-    // Non-fatal: log the cache write failure but still return the data
     if (DEBUG_MODE) {
         error_log("[proxy] Cache write error: {$e->getMessage()}");
     }
 }
 
-// Return the API response
 header('Content-Type: application/json; charset=utf-8');
 echo $responseData;
 exit;

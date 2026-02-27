@@ -1,17 +1,24 @@
 <?php
 /**
- * IRSDK SOF Agent — iRacing OAuth2 Authentication Endpoint
+ * IRSDK SOF Agent — iRacing OAuth 2.0 Authentication Endpoint
  *
- * Handles OAuth2 authentication with the iRacing Data API.
- * Receives client credentials, exchanges them for an access token,
- * stores the encrypted token in the settings table, and returns
- * the connection status.
+ * Authenticates with the iRacing Data API using OAuth 2.0 Password Limited grant.
+ * Requires OAuth client credentials (from iRacing Client Registration) plus
+ * the user's iRacing email and password.
  *
  * Method: POST
- * Body: { "client_id": "...", "client_secret": "..." }
+ * Body (initial auth):
+ *   { "oauth_client_id": "...", "oauth_client_secret": "...",
+ *     "iracing_email": "...", "iracing_password": "..." }
+ *
+ * Body (test with stored credentials — all fields masked/empty):
+ *   { "oauth_client_id": "****...", ... }
+ *
+ * Body (refresh token):
+ *   { "grant_type": "refresh_token" }
  *
  * Response (success):
- *   { "success": true, "expires_in": 3600, "message": "Authenticated successfully" }
+ *   { "success": true, "expires_in": 600, "message": "Authenticated successfully" }
  *
  * Response (failure):
  *   { "error": true, "message": "Authentication failed: ..." }
@@ -35,121 +42,141 @@ requireMethod('POST');
 // Parse the JSON request body
 $input = getJsonInput();
 
-$clientId     = trim($input['client_id'] ?? '');
-$clientSecret = trim($input['client_secret'] ?? '');
+$db  = Database::getInstance();
+$key = _getEncryptionKey();
 
-// If credentials are masked (from a reloaded settings page), read stored ones from DB
-if (str_starts_with($clientId, '****') || str_starts_with($clientSecret, '****')
-    || empty($clientId) || empty($clientSecret)) {
+// ============================================================================
+// Determine grant type
+// ============================================================================
 
-    $dbForCreds    = Database::getInstance();
-    $encKeyForCreds = _getEncryptionKey();
+$grantType = $input['grant_type'] ?? 'password_limited';
 
-    $storedId     = $dbForCreds->getSetting('oauth_client_id');
-    $storedSecret = $dbForCreds->getSetting('oauth_client_secret');
-
-    if ((str_starts_with($clientId, '****') || empty($clientId)) && !empty($storedId)) {
-        $clientId = _decrypt($storedId, $encKeyForCreds);
+if ($grantType === 'refresh_token') {
+    // ---- Refresh token flow ----
+    $refreshToken = $db->getSetting('oauth_refresh_token');
+    if (empty($refreshToken)) {
+        jsonError('No refresh token available. Authenticate first.', 400);
     }
-    if ((str_starts_with($clientSecret, '****') || empty($clientSecret)) && !empty($storedSecret)) {
-        $clientSecret = _decrypt($storedSecret, $encKeyForCreds);
-    }
-}
 
-// Validate required fields
-if (empty($clientId) || empty($clientSecret)) {
-    jsonError('Both client_id and client_secret are required. Enter your iRacing email and password.', 400);
+    $refreshToken = _decrypt($refreshToken, $key);
+    $clientId     = _decrypt($db->getSetting('oauth_client_id') ?? '', $key);
+    $clientSecret = _decrypt($db->getSetting('oauth_client_secret') ?? '', $key);
+
+    $postFields = http_build_query([
+        'grant_type'    => 'refresh_token',
+        'client_id'     => $clientId,
+        'client_secret' => $clientSecret,
+        'refresh_token' => $refreshToken,
+    ]);
+} else {
+    // ---- Password Limited flow ----
+    $oauthClientId     = trim($input['oauth_client_id'] ?? '');
+    $oauthClientSecret = trim($input['oauth_client_secret'] ?? '');
+    $iracingEmail      = trim($input['iracing_email'] ?? '');
+    $iracingPassword   = trim($input['iracing_password'] ?? '');
+
+    // If values are masked or empty, read stored encrypted credentials from DB
+    if (str_starts_with($oauthClientId, '****') || empty($oauthClientId)) {
+        $stored = $db->getSetting('oauth_client_id');
+        if (!empty($stored)) $oauthClientId = _decrypt($stored, $key);
+    }
+    if (str_starts_with($oauthClientSecret, '****') || empty($oauthClientSecret)) {
+        $stored = $db->getSetting('oauth_client_secret');
+        if (!empty($stored)) $oauthClientSecret = _decrypt($stored, $key);
+    }
+    if (str_starts_with($iracingEmail, '****') || empty($iracingEmail)) {
+        $stored = $db->getSetting('iracing_email');
+        if (!empty($stored)) $iracingEmail = _decrypt($stored, $key);
+    }
+    if (str_starts_with($iracingPassword, '****') || empty($iracingPassword)) {
+        $stored = $db->getSetting('iracing_password');
+        if (!empty($stored)) $iracingPassword = _decrypt($stored, $key);
+    }
+
+    // Validate all 4 fields
+    if (empty($oauthClientId) || empty($oauthClientSecret)) {
+        jsonError('OAuth Client ID and Client Secret are required. Register at https://oauth.iracing.com/', 400);
+    }
+    if (empty($iracingEmail) || empty($iracingPassword)) {
+        jsonError('iRacing email and password are required.', 400);
+    }
+
+    // Store credentials encrypted for future use
+    $db->setSetting('oauth_client_id', _encrypt($oauthClientId, $key));
+    $db->setSetting('oauth_client_secret', _encrypt($oauthClientSecret, $key));
+    $db->setSetting('iracing_email', _encrypt($iracingEmail, $key));
+    $db->setSetting('iracing_password', _encrypt($iracingPassword, $key));
+
+    $postFields = http_build_query([
+        'grant_type'    => 'password_limited',
+        'client_id'     => $oauthClientId,
+        'client_secret' => $oauthClientSecret,
+        'username'      => $iracingEmail,
+        'password'      => $iracingPassword,
+    ]);
 }
 
 // ============================================================================
-// Exchange credentials for an access token
+// Call the OAuth token endpoint
 // ============================================================================
 
 try {
-    // Build the token request
-    // iRacing uses email/password hash authentication via their auth endpoint.
-    // The client_id and client_secret here represent the user's iRacing credentials
-    // (email and encoded password) for the members API.
     $tokenUrl = IRACING_OAUTH_TOKEN_URL;
 
-    // Prepare the authentication payload
-    // iRacing expects Base64(SHA256(password + email.lowercase))
-    $encodedPassword = base64_encode(
-        hash('sha256', $clientSecret . strtolower($clientId), true)
-    );
-
-    $postData = json_encode([
-        'email'    => $clientId,
-        'password' => $encodedPassword,
-    ]);
-
-    // Initialize cURL for the token request
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $tokenUrl,
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $postData,
+        CURLOPT_POSTFIELDS     => $postFields,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
-        // Keep POST method through 301/302 redirects (prevents POST→GET conversion)
-        CURLOPT_POSTREDIR      => CURL_REDIR_POST_ALL,
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
         CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'User-Agent: IRSDK-SOF-Agent/1.0',
+            'Content-Type: application/x-www-form-urlencoded',
+            'Accept: application/json',
         ],
-        // Enable cookie handling for iRacing session cookies
-        CURLOPT_COOKIEJAR      => sys_get_temp_dir() . '/irsdk_sof_cookies.txt',
-        CURLOPT_COOKIEFILE     => sys_get_temp_dir() . '/irsdk_sof_cookies.txt',
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
-    $response   = curl_exec($ch);
-    $httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError  = curl_error($ch);
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
 
     // Handle cURL errors
     if ($response === false) {
-        jsonError("Connection to iRacing failed: {$curlError}", 502);
+        jsonError("Connection to iRacing OAuth failed: {$curlError}", 502);
     }
 
     // Parse the response
     $data = json_decode($response, true);
 
-    // Check for authentication success
-    // iRacing returns a JSON body with authcode on success, or an error message
-    if ($httpCode >= 200 && $httpCode < 300) {
-        // Authentication succeeded — store the credentials (encrypted) in settings
-        $db = Database::getInstance();
-
-        // Encrypt sensitive data before storing
-        $encryptionKey = _getEncryptionKey();
-
-        $encryptedId     = _encrypt($clientId, $encryptionKey);
-        $encryptedSecret = _encrypt($clientSecret, $encryptionKey);
-
-        $db->setSetting('oauth_client_id', $encryptedId);
-        $db->setSetting('oauth_client_secret', $encryptedSecret);
+    // Check for success
+    if ($httpCode >= 200 && $httpCode < 300 && !empty($data['access_token'])) {
+        // Store tokens
+        $db->setSetting('oauth_access_token', _encrypt($data['access_token'], $key));
+        $db->setSetting('oauth_token_type', $data['token_type'] ?? 'Bearer');
         $db->setSetting('oauth_authenticated_at', now());
 
-        // Store authcode/token if present
-        if (!empty($data['authcode'])) {
-            $db->setSetting('oauth_authcode', _encrypt($data['authcode'], $encryptionKey));
-        }
+        $expiresIn = (int)($data['expires_in'] ?? 600);
+        $db->setSetting('oauth_token_expires_at', date('Y-m-d H:i:s', time() + $expiresIn));
 
-        // Determine expiration (default 1 hour)
-        $expiresIn = $data['expires_in'] ?? 3600;
-        $db->setSetting('oauth_expires_at', date('Y-m-d H:i:s', time() + (int)$expiresIn));
+        if (!empty($data['refresh_token'])) {
+            $db->setSetting('oauth_refresh_token', _encrypt($data['refresh_token'], $key));
+            $refreshExpiresIn = (int)($data['refresh_token_expires_in'] ?? 3600);
+            $db->setSetting('oauth_refresh_expires_at', date('Y-m-d H:i:s', time() + $refreshExpiresIn));
+        }
 
         jsonResponse([
             'success'    => true,
             'expires_in' => $expiresIn,
-            'message'    => 'Authenticated successfully with iRacing.',
+            'token_type' => $data['token_type'] ?? 'Bearer',
+            'message'    => 'Authenticated successfully with iRacing OAuth 2.0.',
         ]);
     } else {
         // Authentication failed
-        $errorMsg = $data['message'] ?? $data['error'] ?? "HTTP {$httpCode}";
+        $errorMsg = $data['error_description'] ?? $data['error'] ?? $data['message'] ?? "HTTP {$httpCode}";
         $extra = [];
         if (DEBUG_MODE) {
             $extra['http_code'] = $httpCode;
@@ -164,5 +191,3 @@ try {
     }
     jsonError('An internal error occurred during authentication.', 500);
 }
-
-// Encryption functions are in crypto.php (shared with proxy.php)

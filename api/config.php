@@ -41,8 +41,8 @@ define('BRIDGE_WS_URL', 'ws://' . BRIDGE_WS_HOST . ':' . BRIDGE_WS_PORT);
 /** Base URL for the iRacing Data API (v1). */
 define('IRACING_API_BASE_URL', 'https://members-ng.iracing.com');
 
-/** OAuth2 token endpoint for iRacing authentication. */
-define('IRACING_OAUTH_TOKEN_URL', 'https://members-ng.iracing.com/auth');
+/** OAuth2 token endpoint (new — replaces legacy /auth since Dec 2025). */
+define('IRACING_OAUTH_TOKEN_URL', 'https://oauth.iracing.com/oauth2/token');
 
 // ============================================================================
 // Cache TTLs (seconds) — defaults, overridable via settings table

@@ -31,8 +31,10 @@ const SettingsPage = (() => {
     my_name:            '',
     irating_target:   2500,
     sr_minimum:       3.0,
-    oauth_client_id:  '',
+    oauth_client_id:     '',
     oauth_client_secret: '',
+    iracing_email:       '',
+    iracing_password:    '',
     bridge_ws_host:   'localhost',
     bridge_ws_port:   8182,
     threshold_go:     75,
@@ -161,12 +163,23 @@ const SettingsPage = (() => {
           <h4 style="font-family:var(--font-display); font-size:var(--text-sm);
                      color:var(--accent-cyan); margin:0 0 var(--spacing-md) 0;
                      text-transform:uppercase; letter-spacing:0.08em;">
-            iRacing API (OAuth2)
+            iRacing API (OAuth 2.0)
           </h4>
+          <p style="font-family:var(--font-data); font-size:var(--text-xs);
+                    color:var(--text-muted); margin:0 0 var(--spacing-sm) 0;">
+            OAuth credentials from
+            <a href="https://oauth.iracing.com/accountmanagement/" target="_blank"
+               style="color:var(--accent-cyan);">iRacing Client Registration</a>
+          </p>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
                       margin-bottom:var(--spacing-md);">
-            ${_inputField('oauth_client_id', 'Email iRacing', val('oauth_client_id'), 'text', 'email@example.com')}
-            ${_inputField('oauth_client_secret', 'Mot de passe iRacing', val('oauth_client_secret'), 'password', 'mot de passe')}
+            ${_inputField('oauth_client_id', 'OAuth Client ID', val('oauth_client_id'), 'text', 'from iRacing registration')}
+            ${_inputField('oauth_client_secret', 'OAuth Client Secret', val('oauth_client_secret'), 'password', 'from iRacing registration')}
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
+                      margin-bottom:var(--spacing-md);">
+            ${_inputField('iracing_email', 'Email iRacing', val('iracing_email'), 'text', 'votre@email.com')}
+            ${_inputField('iracing_password', 'Mot de passe iRacing', val('iracing_password'), 'password', 'mot de passe')}
           </div>
           <button onclick="SettingsPage.testApiConnection()"
                   style="padding:var(--spacing-xs) var(--spacing-md);
@@ -446,12 +459,16 @@ const SettingsPage = (() => {
     }
 
     try {
-      const clientId = document.querySelector('[data-setting="oauth_client_id"]')?.value || '';
-      const clientSecret = document.querySelector('[data-setting="oauth_client_secret"]')?.value || '';
+      const oauthClientId     = document.querySelector('[data-setting="oauth_client_id"]')?.value || '';
+      const oauthClientSecret = document.querySelector('[data-setting="oauth_client_secret"]')?.value || '';
+      const iracingEmail      = document.querySelector('[data-setting="iracing_email"]')?.value || '';
+      const iracingPassword   = document.querySelector('[data-setting="iracing_password"]')?.value || '';
 
       const result = await api.post('iracing/auth', {
-        client_id: clientId,
-        client_secret: clientSecret,
+        oauth_client_id: oauthClientId,
+        oauth_client_secret: oauthClientSecret,
+        iracing_email: iracingEmail,
+        iracing_password: iracingPassword,
       });
 
       if (result && !result.error) {
