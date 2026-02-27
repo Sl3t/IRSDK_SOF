@@ -14,6 +14,8 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 const IRSDKReader = require('./irsdk-reader');
 
@@ -24,6 +26,7 @@ const WS_PORT = 8182;
 const WS_HOST = '0.0.0.0'; // Listen on all interfaces (LAN-accessible)
 const HEARTBEAT_INTERVAL_MS = 5000;
 const THROTTLE_INTERVAL_MS = 2000;
+const LIVE_DATA_FILE = path.join(__dirname, 'live-data.json');
 
 // ---------------------------------------------------------------------------
 // Logging helpers
@@ -140,9 +143,29 @@ function throttledBroadcast(message) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Write live-data.json for PHP backend consumption
+// ---------------------------------------------------------------------------
+/**
+ * Write the latest session data to live-data.json so the PHP endpoints
+ * (session/live, conditions/live) can serve it via REST API.
+ * Uses atomic write (write to temp file, then rename) to prevent partial reads.
+ * @param {object} data - The session_update message
+ */
+function writeLiveData(data) {
+  const tmp = LIVE_DATA_FILE + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data), 'utf8');
+    fs.renameSync(tmp, LIVE_DATA_FILE);
+  } catch (err) {
+    log('ERROR', `Failed to write live-data.json: ${err.message}`);
+  }
+}
+
 // Listen for parsed data from the reader
 reader.on('session_update', (message) => {
   throttledBroadcast(message);
+  writeLiveData(message);
 });
 
 reader.on('status_change', (status) => {
@@ -168,6 +191,17 @@ setInterval(() => {
 function shutdown(signal) {
   log('INFO', `Received ${signal}, shutting down...`);
   reader.stop();
+
+  // Remove live-data.json so PHP endpoints know the bridge is stopped
+  try {
+    if (fs.existsSync(LIVE_DATA_FILE)) {
+      fs.unlinkSync(LIVE_DATA_FILE);
+      log('INFO', 'Removed live-data.json');
+    }
+  } catch (err) {
+    log('WARN', `Could not remove live-data.json: ${err.message}`);
+  }
+
   wss.close(() => {
     log('INFO', 'WebSocket server closed');
     process.exit(0);

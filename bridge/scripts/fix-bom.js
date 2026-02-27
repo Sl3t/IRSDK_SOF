@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const file = path.join(__dirname, '..', 'node_modules', 'node-irsdk', 'binding.gyp');
+const file = path.join(__dirname, '..', 'node_modules', 'node-irsdk-2023', 'binding.gyp');
 
 if (fs.existsSync(file)) {
   let content = fs.readFileSync(file, 'utf8');

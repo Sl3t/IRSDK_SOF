@@ -7,6 +7,10 @@ db/*.sqlite-shm
 # PHP temp/cookies
 *.tmp
 
+# Bridge runtime data
+bridge/live-data.json
+bridge/node_modules/
+
 # OS files
 .DS_Store
 Thumbs.db

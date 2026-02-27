@@ -47,7 +47,8 @@ const DashboardPage = (() => {
 
     // Use WebSocket conditions if available, otherwise API conditions
     const wsData = wsClient.getLastData();
-    const conditions = (wsData && wsData.conditions) ? wsData.conditions : conditionsData;
+    const wsConditions = wsData ? (wsData.track_conditions || wsData.conditions) : null;
+    const conditions = wsConditions || conditionsData;
 
     // Favorites list
     const favorites = Array.isArray(favoritesData) ? favoritesData : (favoritesData?.series || []);

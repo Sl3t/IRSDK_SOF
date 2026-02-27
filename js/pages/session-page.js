@@ -73,7 +73,7 @@ const SessionPage = (() => {
 
     // Extract data from session payload
     const drivers = sessionData.drivers || sessionData.entries || [];
-    const conditions = sessionData.conditions || sessionData.weather || null;
+    const conditions = sessionData.track_conditions || sessionData.conditions || sessionData.weather || null;
     const myIrating = sessionData.my_irating || storage.get('my_irating', 0);
     const mySR = sessionData.my_sr || storage.get('my_sr', 0);
 

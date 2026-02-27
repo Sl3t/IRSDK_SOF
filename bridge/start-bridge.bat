@@ -36,11 +36,14 @@ echo.
 REM Install dependencies if node_modules does not exist
 if not exist "node_modules\" (
     echo Installing dependencies...
+    echo This may take a minute (native C++ addon build required^).
     echo.
-    npm install
+    call npm run setup
     echo.
     if %ERRORLEVEL% neq 0 (
         echo [ERROR] npm install failed. Check the errors above.
+        echo         Make sure you have Visual Studio Build Tools installed.
+        echo         Run: npm install -g windows-build-tools
         echo.
         pause
         exit /b 1
