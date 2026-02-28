@@ -111,15 +111,28 @@ if ($session) {
 
     // If IRSDK didn't provide a useful series name but we have a SeriesID,
     // look it up in our local favorite_series table (populated by /api/series/sync).
-    if ($seriesId && (!$currentName || strpos($currentName, ' — ') !== false)) {
+    // Also auto-star the series as favorite since the user is actively racing it.
+    if ($seriesId) {
         try {
             $db = Database::getInstance();
             $row = $db->fetchOne(
-                "SELECT series_name FROM favorite_series WHERE iracing_series_id = ?",
+                "SELECT series_name, is_favorite FROM favorite_series WHERE iracing_series_id = ?",
                 [(int) $seriesId]
             );
-            if ($row && !empty($row['series_name'])) {
-                $session['series_name'] = $row['series_name'];
+            if ($row) {
+                // Resolve name if IRSDK only gave a fallback
+                if (!$currentName || strpos($currentName, ' — ') !== false) {
+                    if (!empty($row['series_name'])) {
+                        $session['series_name'] = $row['series_name'];
+                    }
+                }
+                // Auto-favorite: the user is racing this series, star it
+                if (!$row['is_favorite']) {
+                    $db->update('favorite_series', [
+                        'is_favorite' => 1,
+                        'updated_at'  => date('Y-m-d H:i:s'),
+                    ], 'iracing_series_id = ?', [(int) $seriesId]);
+                }
             }
         } catch (Exception $e) {
             // DB lookup failed — keep the original name, don't break the response

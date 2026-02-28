@@ -51,20 +51,30 @@ const SessionPage = (() => {
    */
   async function _resolveSeriesName(seriesId) {
     try {
-      const list = await api.getSeriesList();
-      if (Array.isArray(list)) {
-        const match = list.find((s) => s.iracing_series_id === seriesId || s.iracing_series_id === String(seriesId));
-        if (match && match.series_name) {
-          _seriesNameCache[seriesId] = match.series_name;
-          // Trigger re-render so the resolved name appears
-          render();
-        }
+      // Try favorites first (smaller set, faster), then fall back to full list
+      const favorites = await api.getSeriesFavorites();
+      let match = _findSeriesById(favorites, seriesId);
+      if (!match) {
+        const list = await api.getSeriesList();
+        match = _findSeriesById(list, seriesId);
+      }
+      if (match && match.series_name) {
+        _seriesNameCache[seriesId] = match.series_name;
+        render();
       }
     } catch (e) {
       console.warn('[SessionPage] Failed to resolve series name for ID', seriesId, e);
     } finally {
       _seriesNamePending[seriesId] = false;
     }
+  }
+
+  /** Find a series by ID in an array (handles both number and string IDs). */
+  function _findSeriesById(list, seriesId) {
+    if (!Array.isArray(list)) return null;
+    return list.find((s) =>
+      Number(s.iracing_series_id) === Number(seriesId)
+    ) || null;
   }
 
   // =========================================================================
