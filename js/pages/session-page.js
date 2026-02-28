@@ -52,11 +52,12 @@ const SessionPage = (() => {
   async function _resolveSeriesName(seriesId) {
     try {
       // Try favorites first (smaller set, faster), then fall back to full list
-      const favorites = await api.getSeriesFavorites();
-      let match = _findSeriesById(favorites, seriesId);
+      // API returns wrapped objects: { favorites: [...] } and { series: [...] }
+      const favResp = await api.getSeriesFavorites();
+      let match = _findSeriesById(favResp && favResp.favorites, seriesId);
       if (!match) {
-        const list = await api.getSeriesList();
-        match = _findSeriesById(list, seriesId);
+        const listResp = await api.getSeriesList();
+        match = _findSeriesById(listResp && listResp.series, seriesId);
       }
       if (match && match.series_name) {
         _seriesNameCache[seriesId] = match.series_name;
