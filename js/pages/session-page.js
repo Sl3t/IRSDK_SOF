@@ -94,9 +94,42 @@ const SessionPage = (() => {
       weight: Math.round(c.weight * 100),
     }));
 
+    // Extract session info for header
+    const sessionInfo = sessionData.session || {};
+    const seriesName = sessionInfo.series_name || '';
+    const trackName = sessionInfo.track_name || '';
+    const trackConfig = sessionInfo.track_config || '';
+    const sessionType = sessionInfo.session_type || '';
+    const fullTrack = trackConfig && trackConfig !== trackName
+      ? `${trackName} — ${trackConfig}` : trackName;
+
     // ----- Build page HTML -----
     let html = `<div class="animate-fade-in" style="padding:var(--spacing-lg);
                      max-width:var(--content-max-width); margin:0 auto;">`;
+
+    // --- Session header: Series + Track + Session Type ---
+    if (seriesName || fullTrack) {
+      html += `
+        <div style="margin-bottom:var(--spacing-lg); padding-bottom:var(--spacing-md);
+                    border-bottom:1px solid var(--border);">
+          <h2 style="font-family:var(--font-display); font-size:var(--text-xl);
+                     color:var(--accent-cyan); margin:0 0 var(--spacing-xs) 0;
+                     text-transform:uppercase; letter-spacing:0.04em;
+                     text-shadow:0 0 12px rgba(0,191,255,0.3);">
+            ${seriesName || 'Live Session'}
+          </h2>
+          <div style="display:flex; gap:var(--spacing-md); align-items:center; flex-wrap:wrap;">
+            ${fullTrack ? `<span style="font-family:var(--font-data); font-size:var(--text-base);
+                                        color:var(--text-primary);">${fullTrack}</span>` : ''}
+            ${sessionType ? `<span style="font-family:var(--font-data); font-size:var(--text-sm);
+                                          color:var(--text-muted); text-transform:uppercase;
+                                          background:var(--bg-elevated); padding:2px 8px;
+                                          border-radius:var(--radius-sm);">${sessionType}</span>` : ''}
+            <span style="font-family:var(--font-data); font-size:var(--text-sm);
+                         color:var(--text-muted);">${drivers.length} driver${drivers.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>`;
+    }
 
     // --- Top row: Conditions + SOF Gauge ---
     html += `
@@ -144,17 +177,19 @@ const SessionPage = (() => {
         ${FieldSummary.render(drivers)}
       </div>`;
 
-    // --- Driver Grid + iRating Chart (side by side on desktop) ---
+    // --- iRating Chart ---
     html += `
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);
-                  margin-bottom:var(--spacing-lg);">
-        <div>
-          ${DriverGrid.render(drivers, myIrating)}
-        </div>
+      <div style="margin-bottom:var(--spacing-lg);">
         <div class="card" style="background:var(--bg-card); border:1px solid var(--border);
                                   border-radius:var(--radius-md); padding:var(--spacing-md);">
           <div id="session-irating-chart" style="min-height:280px;"></div>
         </div>
+      </div>`;
+
+    // --- Driver Grid (full width) ---
+    html += `
+      <div style="margin-bottom:var(--spacing-lg);">
+        ${DriverGrid.render(drivers, myIrating)}
       </div>`;
 
     // --- Event Ticker (if live) ---

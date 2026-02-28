@@ -67,6 +67,12 @@ const App = (() => {
   /** Auto-refresh period in milliseconds. */
   const REFRESH_INTERVAL_MS = 30000;
 
+  /** Minimum interval between WebSocket-triggered re-renders (anti-flicker). */
+  const WS_RENDER_THROTTLE_MS = 5000;
+
+  /** Timestamp of last WebSocket-triggered render. */
+  let _lastWsRenderTime = 0;
+
   // =========================================================================
   // Helpers
   // =========================================================================
@@ -301,10 +307,14 @@ const App = (() => {
     // Connect to the bridge
     wsClient.connect(wsUrl);
 
-    // On session data update: refresh live pages
+    // On session data update: refresh live pages (throttled to avoid flickering)
     wsClient.onSessionUpdate((data) => {
       if (_currentRoute === 'dashboard' || _currentRoute === 'session') {
-        _refreshCurrentPage();
+        const now = Date.now();
+        if (now - _lastWsRenderTime >= WS_RENDER_THROTTLE_MS) {
+          _lastWsRenderTime = now;
+          _refreshCurrentPage();
+        }
       }
 
       // Add join/leave events to the ticker if EventTicker is available

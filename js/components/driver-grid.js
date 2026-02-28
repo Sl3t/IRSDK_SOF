@@ -186,8 +186,7 @@ const DriverGrid = (() => {
           <td style="${cellStyle} color:var(--text-muted); text-align:center; width:30px;">
             ${i + 1}
           </td>
-          <td style="${cellStyle} color:var(--text-primary); max-width:200px;
-                     overflow:hidden; text-overflow:ellipsis;">
+          <td style="${cellStyle} color:var(--text-primary);">
             ${d.user_name || 'Unknown'}
           </td>
           <td style="${cellStyle} color:${_irColor(d.irating, _myIrating)};
