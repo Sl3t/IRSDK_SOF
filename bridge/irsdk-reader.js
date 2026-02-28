@@ -227,6 +227,29 @@ class IRSDKReader extends EventEmitter {
     const sessionData = this._sessionInfo ? this._sessionInfo.data : null;
     const telemetryValues = this._telemetry ? this._telemetry.values : null;
 
+    // One-time diagnostic: dump telemetry structure to understand node-irsdk-2023
+    if (!this._loggedTelemetryStructure && this._telemetry) {
+      const raw = this._telemetry;
+      const hasValues = raw.values != null;
+      const rawKeys = Object.keys(raw).slice(0, 15);
+      const valKeys = hasValues ? Object.keys(raw.values).slice(0, 10) : [];
+      log('INFO', `=== TELEMETRY STRUCTURE ===`);
+      log('INFO', `  raw keys (first 15): ${rawKeys.join(', ')}`);
+      log('INFO', `  raw.values exists: ${hasValues}`);
+      if (hasValues) {
+        log('INFO', `  raw.values keys (first 10): ${valKeys.join(', ')}`);
+        log('INFO', `  CarIdxTrackSurface in values: ${raw.values.CarIdxTrackSurface != null}`);
+        if (raw.values.CarIdxTrackSurface) {
+          const s = raw.values.CarIdxTrackSurface;
+          log('INFO', `  CarIdxTrackSurface sample: ${JSON.stringify(s.slice(0, 10))}`);
+        }
+      }
+      // Check if telemetry vars are directly on raw (not under .values)
+      log('INFO', `  CarIdxTrackSurface on raw: ${raw.CarIdxTrackSurface != null}`);
+      log('INFO', `  SessionNum on raw: ${raw.SessionNum != null}`);
+      this._loggedTelemetryStructure = true;
+    }
+
     // Parse individual sections
     const session = parseSession(sessionData);
     const drivers = parseDrivers(sessionData, telemetryValues);
@@ -281,8 +304,14 @@ class IRSDKReader extends EventEmitter {
     // unreliable (stale data, bridge started mid-session, replay quirk).
     // Use the full human list so SOF is never stuck at 0 during a live session.
     if (eligible.length === 0 && humans.length > 0) {
-      log('WARN', `in_world filter removed all ${humans.length} drivers from SOF — using fallback (all registered humans)`);
+      if (!this._loggedInWorldFallback) {
+        log('WARN', `in_world filter removed all ${humans.length} drivers from SOF — using fallback (all registered humans)`);
+        this._loggedInWorldFallback = true;
+      }
       eligible = humans;
+    } else if (eligible.length > 0) {
+      // Reset so we log again if fallback re-triggers after a normal period
+      this._loggedInWorldFallback = false;
     }
 
     if (eligible.length === 0) {
