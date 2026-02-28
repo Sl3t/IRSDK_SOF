@@ -34,7 +34,8 @@ const sofEngine = (() => {
       const ir = Number(d.irating || d.iRating || d.IRating || 0);
       const isSpectator = d.is_spectator || d.isSpectator || false;
       const isAI = d.is_ai || d.isAI || false;
-      return ir > 0 && !isSpectator && !isAI;
+      const inWorld = d.in_world !== false; // default true if flag absent
+      return ir > 0 && !isSpectator && !isAI && inWorld;
     });
   };
 

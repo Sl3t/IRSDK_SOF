@@ -10,12 +10,24 @@
  * and spectators (IsSpectator = 1).  We keep spectators and AI in the
  * output (flagged) but exclude the pace car entirely.
  *
+ * Uses telemetry CarIdxTrackSurface (when available) to flag which
+ * drivers are actually connected and in the world vs. just registered.
+ * This is critical for Practice sessions where DriverInfo lists ALL
+ * registered drivers for the time slot, not just those on track.
+ *
+ * CarIdxTrackSurface values:
+ *   -1  = irsdk_NotInWorld (registered but not connected / not loaded)
+ *    0  = irsdk_OffTrack
+ *    1  = irsdk_InPitStall
+ *    2  = irsdk_AproachingPits
+ *    3  = irsdk_OnTrack
+ *
  * Output per driver:
  *   {
  *     car_idx, user_id, user_name, irating, license,
  *     lic_level, lic_sub_level, car_number, car_name,
- *     car_class_id, is_spectator, is_ai, club_name,
- *     division, incidents
+ *     car_class_id, is_spectator, is_ai, in_world,
+ *     club_name, division, incidents
  *   }
  */
 
@@ -25,30 +37,42 @@
  * Parse the DriverInfo section of IRSDK SessionInfo data.
  *
  * @param {object|null} data - The parsed SessionInfo object (sessionInfo.data)
+ * @param {object|null} telemetry - telemetry.values from node-irsdk (optional)
  * @returns {Array<object>} Array of normalised driver objects
  */
-function parseDrivers(data) {
+function parseDrivers(data, telemetry) {
   if (!data || !data.DriverInfo || !data.DriverInfo.Drivers) {
     return [];
   }
 
   const rawDrivers = data.DriverInfo.Drivers;
+
+  // CarIdxTrackSurface: array indexed by car_idx
+  // -1 = not in world (registered but not connected), >= 0 = in world
+  const trackSurface = (telemetry && telemetry.CarIdxTrackSurface)
+    ? telemetry.CarIdxTrackSurface : null;
+
   const results = [];
 
   for (const d of rawDrivers) {
     // ------------------------------------------------------------------
     // Filter: skip the pace car
-    // The pace car is identifiable by several heuristics:
-    //   - CarIsPaceCar === 1
-    //   - UserName === "Pace Car"
-    //   - UserID < 0  (typically -1)
     // ------------------------------------------------------------------
     if (isPaceCar(d)) {
       continue;
     }
 
+    const carIdx = toInt(d.CarIdx, -1);
+
+    // Determine if driver is actually in the world (connected & loaded)
+    // Default to true if no telemetry data is available yet
+    let inWorld = true;
+    if (trackSurface && carIdx >= 0 && carIdx < trackSurface.length) {
+      inWorld = trackSurface[carIdx] >= 0;
+    }
+
     results.push({
-      car_idx: toInt(d.CarIdx, -1),
+      car_idx: carIdx,
       user_id: toInt(d.UserID, 0),
       user_name: d.UserName || d.AbbrevName || 'Unknown',
       irating: toInt(d.IRating, 0),
@@ -60,6 +84,7 @@ function parseDrivers(data) {
       car_class_id: toInt(d.CarClassID, 0),
       is_spectator: toBool(d.IsSpectator),
       is_ai: toBool(d.CarIsAI),
+      in_world: inWorld,
       club_name: d.ClubName || '',
       division: d.DivisionName || d.Division || '',
       incidents: toInt(d.CurDriverIncidentCount, 0),

@@ -60,15 +60,29 @@ const SessionPage = (() => {
   }
 
   /**
-   * Filter drivers: exclude spectators, AI, and drivers with no valid data.
-   * Only keep real human drivers that are actively in the session.
+   * Filter drivers: keep only those who are real, human, and actually
+   * connected to the session (in the world).
+   *
+   * Filters out:
+   *   - Spectators (is_spectator = true)
+   *   - AI drivers (is_ai = true)
+   *   - Registered but not connected drivers (in_world = false)
+   *     This is the key fix for Practice sessions where iRacing lists
+   *     all 32+ registered drivers but only 3 are actually on track.
    *
    * @param {Array} allDrivers - Raw driver list from session data
    * @returns {Array} Filtered driver list
    */
   function _filterActiveDrivers(allDrivers) {
     if (!Array.isArray(allDrivers)) return [];
-    return allDrivers.filter((d) => !d.is_spectator && !d.is_ai);
+    return allDrivers.filter((d) => {
+      // Exclude spectators and AI
+      if (d.is_spectator || d.is_ai) return false;
+      // Exclude drivers not in the world (registered but not connected)
+      // Default to true if in_world flag is not present (backward compat)
+      if (d.in_world === false) return false;
+      return true;
+    });
   }
 
   /**

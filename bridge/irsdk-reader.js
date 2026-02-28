@@ -137,7 +137,7 @@ class IRSDKReader extends EventEmitter {
 
     // Parse individual sections
     const session = parseSession(sessionData);
-    const drivers = parseDrivers(sessionData);
+    const drivers = parseDrivers(sessionData, telemetryValues);
     const conditions = parseConditions(telemetryValues, sessionData);
     const sof = this._computeSOF(drivers);
 
@@ -178,9 +178,9 @@ class IRSDKReader extends EventEmitter {
    * @returns {object} SOF statistics
    */
   _computeSOF(drivers) {
-    // Filter to real, active drivers with valid iRating
+    // Filter to real, active, in-world drivers with valid iRating
     const eligible = drivers.filter(
-      (d) => !d.is_spectator && !d.is_ai && d.irating > 0
+      (d) => !d.is_spectator && !d.is_ai && d.in_world !== false && d.irating > 0
     );
 
     if (eligible.length === 0) {
