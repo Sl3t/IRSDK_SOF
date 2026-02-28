@@ -146,7 +146,9 @@ const SessionPage = (() => {
     const trackConfig = sessionInfo.track_config || '';
     const sessionType = sessionInfo.session_type || '';
     const sessionName = sessionInfo.session_name || '';
+    // Time remaining: prefer telemetry countdown, fallback to YAML duration
     const sessionTimeRemain = _formatTime(sessionInfo.session_time_remain);
+    const sessionDuration = _formatTime(sessionInfo.session_duration_sec);
     const subsessionId = sessionInfo.subsession_id || sessionInfo.session_id || '';
     const isOfficial = sessionInfo.is_official || false;
     const category = sessionInfo.category || '';
@@ -161,8 +163,8 @@ const SessionPage = (() => {
       drivers, conditions, myIrating, mySR,
       sofResult, decisionResult, criteriaDisplay,
       seriesName, trackName, trackConfig, sessionType,
-      sessionName, sessionTimeRemain, fullTrack,
-      subsessionId, isOfficial, category, eventType,
+      sessionName, sessionTimeRemain, sessionDuration,
+      fullTrack, subsessionId, isOfficial, category, eventType,
     };
   }
 
@@ -217,15 +219,23 @@ const SessionPage = (() => {
                      background:var(--bg-elevated); padding:2px 8px;
                      border-radius:var(--radius-sm);">${data.sessionType}</span>` : ''}
           ${officialBadge}
-          ${data.sessionTimeRemain ? `<span id="session-time-remain"
-              style="font-family:var(--font-data); font-size:var(--text-sm);
-                     color:var(--accent-yellow); background:var(--bg-elevated);
-                     padding:2px 8px; border-radius:var(--radius-sm);">
-              &#9202; ${data.sessionTimeRemain}</span>` : `<span id="session-time-remain"
-              style="font-family:var(--font-data); font-size:var(--text-sm);
-                     color:var(--accent-yellow); background:var(--bg-elevated);
-                     padding:2px 8px; border-radius:var(--radius-sm);
-                     display:none;"></span>`}
+          ${data.sessionTimeRemain
+            ? `<span id="session-time-remain"
+                style="font-family:var(--font-data); font-size:var(--text-sm);
+                       color:var(--accent-yellow); background:var(--bg-elevated);
+                       padding:2px 8px; border-radius:var(--radius-sm);">
+                &#9202; ${data.sessionTimeRemain}</span>`
+            : data.sessionDuration
+              ? `<span id="session-time-remain"
+                  style="font-family:var(--font-data); font-size:var(--text-sm);
+                         color:var(--text-secondary); background:var(--bg-elevated);
+                         padding:2px 8px; border-radius:var(--radius-sm);">
+                  &#9202; ${data.sessionDuration}</span>`
+              : `<span id="session-time-remain"
+                  style="font-family:var(--font-data); font-size:var(--text-sm);
+                         color:var(--accent-yellow); background:var(--bg-elevated);
+                         padding:2px 8px; border-radius:var(--radius-sm);
+                         display:none;"></span>`}
           <span id="session-driver-count"
               style="font-family:var(--font-data); font-size:var(--text-sm);
                      color:var(--text-muted);">
@@ -339,11 +349,16 @@ const SessionPage = (() => {
       countEl.textContent = `${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}`;
     }
 
-    // --- Header: session time remaining ---
+    // --- Header: session time remaining (or total duration as fallback) ---
     const timeEl = document.getElementById('session-time-remain');
     if (timeEl) {
       if (data.sessionTimeRemain) {
         timeEl.innerHTML = `&#9202; ${data.sessionTimeRemain}`;
+        timeEl.style.color = 'var(--accent-yellow)';
+        timeEl.style.display = '';
+      } else if (data.sessionDuration) {
+        timeEl.innerHTML = `&#9202; ${data.sessionDuration}`;
+        timeEl.style.color = 'var(--text-secondary)';
         timeEl.style.display = '';
       } else {
         timeEl.style.display = 'none';

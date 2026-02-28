@@ -58,11 +58,21 @@ function parseSession(data) {
 
   const trackConfig = weekend.TrackConfigName || null;
 
-  const seriesName = weekend.SeriesDisplayName
+  // Series name with intelligent fallback chain
+  // In official series: SeriesDisplayName is present
+  // In free practice / test drive: absent — build from Category + EventType
+  let seriesName = weekend.SeriesDisplayName
     || weekend.SeriesShortName
     || weekend.SeasonDisplayName
-    || weekend.SeriesID  // fallback to ID if names absent
     || null;
+
+  // Fallback: build a descriptive label from what we have
+  if (!seriesName) {
+    const parts = [];
+    if (weekend.Category) parts.push(weekend.Category);
+    if (weekend.EventType) parts.push(weekend.EventType);
+    seriesName = parts.length > 0 ? parts.join(' — ') : null;
+  }
 
   // Official session flag — node-irsdk exposes this as a numeric 0/1 or string
   const isOfficial = toBoolean(weekend.Official);
@@ -109,9 +119,12 @@ function parseSession(data) {
   const sessionName = activeSession ? (activeSession.SessionName || activeSession.SessionType || null) : null;
   const sessionNum = activeSession ? (activeSession.SessionNum !== undefined ? activeSession.SessionNum : null) : null;
 
-  // Session duration from the YAML (e.g. "3600.0000 sec" or "unlimited")
+  // Session duration from the YAML (e.g. "7200.0000 sec" or "unlimited")
   const sessionTimeStr = activeSession ? (activeSession.SessionTime || null) : null;
   const sessionLaps = activeSession ? (activeSession.SessionLaps || null) : null;
+
+  // Parse the duration string to get total seconds (for display fallback)
+  const sessionDurationSec = parseSessionDuration(sessionTimeStr);
 
   // ---------------------------------------------------------------------------
   // Car class — typically found in WeekendInfo.WeekendOptions or DriverInfo
@@ -136,6 +149,7 @@ function parseSession(data) {
     category: category,
     event_type: eventType,
     session_duration: sessionTimeStr,
+    session_duration_sec: sessionDurationSec,
     session_laps: sessionLaps,
   };
 }
@@ -159,6 +173,23 @@ function extractCarClassFromDriverInfo(data) {
     if (driver.IsSpectator === 0 || driver.IsSpectator === false) {
       return driver.CarClassShortName || driver.CarClassGroupName || null;
     }
+  }
+  return null;
+}
+
+/**
+ * Parse an IRSDK session duration string like "7200.0000 sec" to seconds.
+ * Returns null for "unlimited" or unparseable values.
+ * @param {string|null} timeStr
+ * @returns {number|null} Duration in seconds, or null
+ */
+function parseSessionDuration(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  if (timeStr.toLowerCase().includes('unlimited')) return null;
+  const match = timeStr.match(/([\d.]+)/);
+  if (match) {
+    const seconds = parseFloat(match[1]);
+    return isFinite(seconds) ? Math.round(seconds) : null;
   }
   return null;
 }

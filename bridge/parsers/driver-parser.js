@@ -15,12 +15,13 @@
  * This is critical for Practice sessions where DriverInfo lists ALL
  * registered drivers for the time slot, not just those on track.
  *
- * CarIdxTrackSurface values:
- *   -1  = irsdk_NotInWorld (registered but not connected / not loaded)
- *    0  = irsdk_OffTrack
- *    1  = irsdk_InPitStall
- *    2  = irsdk_AproachingPits
- *    3  = irsdk_OnTrack
+ * CarIdxTrackSurface values (node-irsdk-2023 returns STRINGS):
+ *   "NotInWorld"      = registered but not connected / not loaded
+ *   "OffTrack"        = off the racing surface
+ *   "InPitStall"      = in pit stall
+ *   "AproachingPits"  = approaching pits
+ *   "OnTrack"         = on the racing surface
+ *   (or numeric -1/0/1/2/3 in some versions)
  *
  * Output per driver:
  *   {
@@ -48,7 +49,8 @@ function parseDrivers(data, telemetry) {
   const rawDrivers = data.DriverInfo.Drivers;
 
   // CarIdxTrackSurface: array indexed by car_idx
-  // -1 = not in world (registered but not connected), >= 0 = in world
+  // node-irsdk-2023 returns STRINGS like "NotInWorld", "OnTrack", "InPitStall"
+  // (not numeric values). "NotInWorld" means driver is not connected.
   const trackSurface = (telemetry && telemetry.CarIdxTrackSurface)
     ? telemetry.CarIdxTrackSurface : null;
 
@@ -65,10 +67,17 @@ function parseDrivers(data, telemetry) {
     const carIdx = toInt(d.CarIdx, -1);
 
     // Determine if driver is actually in the world (connected & loaded)
-    // Default to true if no telemetry data is available yet
-    let inWorld = true;
+    // node-irsdk-2023 returns STRING enum values, not numbers:
+    //   "NotInWorld" = not connected, anything else = in world
+    //   Also handle numeric -1 for compatibility with other irsdk versions
+    let inWorld = true; // default true if no telemetry available yet
     if (trackSurface && carIdx >= 0 && carIdx < trackSurface.length) {
-      inWorld = trackSurface[carIdx] >= 0;
+      const surface = trackSurface[carIdx];
+      if (typeof surface === 'string') {
+        inWorld = surface !== 'NotInWorld';
+      } else if (typeof surface === 'number') {
+        inWorld = surface >= 0;
+      }
     }
 
     results.push({

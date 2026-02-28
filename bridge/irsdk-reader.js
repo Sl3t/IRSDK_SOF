@@ -140,10 +140,21 @@ class IRSDKReader extends EventEmitter {
       if (!this._loggedTrackSurface && telemetry && telemetry.values) {
         const surface = telemetry.values.CarIdxTrackSurface;
         if (surface) {
-          const active = surface.filter((v) => v >= 0).length;
-          const total = surface.filter((v) => v !== undefined).length;
-          log('INFO', `CarIdxTrackSurface: ${active} in-world out of ${total} slots`);
-          log('INFO', `  Raw values (first 40): [${surface.slice(0, 40).join(', ')}]`);
+          // node-irsdk-2023 returns STRINGS ("NotInWorld", "OnTrack", etc.)
+          const active = surface.filter((v) =>
+            (typeof v === 'string' && v !== 'NotInWorld') ||
+            (typeof v === 'number' && v >= 0)
+          ).length;
+          const total = surface.length;
+          log('INFO', `CarIdxTrackSurface: ${active} in-world out of ${total} slots (type: ${typeof surface[0]})`);
+          // Show first entries that aren't NotInWorld
+          const nonEmpty = [];
+          surface.forEach((v, i) => {
+            if ((typeof v === 'string' && v !== 'NotInWorld') || (typeof v === 'number' && v >= 0)) {
+              nonEmpty.push(`[${i}]=${v}`);
+            }
+          });
+          log('INFO', `  Active slots: ${nonEmpty.length > 0 ? nonEmpty.join(', ') : '(none)'}`);
         } else {
           log('WARN', 'CarIdxTrackSurface NOT available in telemetry');
         }
