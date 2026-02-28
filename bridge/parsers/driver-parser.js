@@ -15,13 +15,18 @@
  * This is critical for Practice sessions where DriverInfo lists ALL
  * registered drivers for the time slot, not just those on track.
  *
- * CarIdxTrackSurface values (node-irsdk-2023 returns STRINGS):
- *   "NotInWorld"      = registered but not connected / not loaded
- *   "OffTrack"        = off the racing surface
- *   "InPitStall"      = in pit stall
- *   "AproachingPits"  = approaching pits
- *   "OnTrack"         = on the racing surface
- *   (or numeric -1/0/1/2/3 in some versions)
+ * CarIdxTrackSurface values (iRacing SDK irsdk_TrkLoc enum):
+ *   -1 / "NotInWorld"     = registered but not connected / not loaded
+ *    0 / "OffTrack"       = off the racing surface
+ *    1 / "InPitStall"     = in pit stall
+ *    2 / "AproachingPits" = approaching pits
+ *    3 / "OnTrack"        = on the racing surface
+ * node-irsdk-2023 may return raw integers OR strings depending on version.
+ *
+ * Fallback signals (when CarIdxTrackSurface is unreliable):
+ *   CarIdxLapCompleted > 0  = car has driven laps → definitely in world
+ *   CarIdxLapDistPct > 0    = car is somewhere on track → in world
+ *   CarIdxEstTime > 0       = car has estimated time → in world
  *
  * Output per driver:
  *   {
@@ -49,10 +54,21 @@ function parseDrivers(data, telemetry) {
   const rawDrivers = data.DriverInfo.Drivers;
 
   // CarIdxTrackSurface: array indexed by car_idx
-  // node-irsdk-2023 returns STRINGS like "NotInWorld", "OnTrack", "InPitStall"
-  // (not numeric values). "NotInWorld" means driver is not connected.
+  // iRacing SDK returns integers: -1=NotInWorld, 0=OffTrack, 1=InPitStall,
+  // 2=AproachingPits, 3=OnTrack.  Some node-irsdk versions may convert these
+  // to strings ("NotInWorld", "OnTrack", etc.) — we handle both.
   const trackSurface = (telemetry && telemetry.CarIdxTrackSurface)
     ? telemetry.CarIdxTrackSurface : null;
+
+  // Fallback signals: if CarIdxTrackSurface is unreliable (all -1 despite
+  // being in an active session), use secondary telemetry arrays to detect
+  // drivers who are clearly in the world.
+  const lapCompleted = (telemetry && telemetry.CarIdxLapCompleted)
+    ? telemetry.CarIdxLapCompleted : null;
+  const lapDistPct = (telemetry && telemetry.CarIdxLapDistPct)
+    ? telemetry.CarIdxLapDistPct : null;
+  const estTime = (telemetry && telemetry.CarIdxEstTime)
+    ? telemetry.CarIdxEstTime : null;
 
   const results = [];
 
@@ -66,17 +82,33 @@ function parseDrivers(data, telemetry) {
 
     const carIdx = toInt(d.CarIdx, -1);
 
-    // Determine if driver is actually in the world (connected & loaded)
-    // node-irsdk-2023 returns STRING enum values, not numbers:
-    //   "NotInWorld" = not connected, anything else = in world
-    //   Also handle numeric -1 for compatibility with other irsdk versions
+    // Determine if driver is actually in the world (connected & loaded).
+    // Primary: CarIdxTrackSurface (most reliable when available)
+    // Fallback: CarIdxLapCompleted > 0 or CarIdxLapDistPct > 0 means
+    // the car HAS driven — it's definitely in the world even if
+    // CarIdxTrackSurface says otherwise.
     let inWorld = true; // default true if no telemetry available yet
     if (trackSurface && carIdx >= 0 && carIdx < trackSurface.length) {
       const surface = trackSurface[carIdx];
       if (typeof surface === 'string') {
         inWorld = surface !== 'NotInWorld';
       } else if (typeof surface === 'number') {
-        inWorld = surface >= 0;
+        inWorld = surface >= 0; // -1 = NotInWorld, 0+ = in world
+      }
+
+      // Fallback: override NotInWorld if other telemetry proves the car
+      // is active (has completed laps or is somewhere on the track).
+      // This handles edge cases where CarIdxTrackSurface is stale or
+      // unreliable (e.g. bridge started mid-session, replay mode quirks).
+      if (!inWorld && carIdx >= 0) {
+        if (lapCompleted && carIdx < lapCompleted.length && lapCompleted[carIdx] > 0) {
+          inWorld = true;
+        } else if (lapDistPct && carIdx < lapDistPct.length &&
+                   lapDistPct[carIdx] > 0 && lapDistPct[carIdx] <= 1) {
+          inWorld = true;
+        } else if (estTime && carIdx < estTime.length && estTime[carIdx] > 0) {
+          inWorld = true;
+        }
       }
     }
 

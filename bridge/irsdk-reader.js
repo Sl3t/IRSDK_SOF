@@ -146,18 +146,30 @@ class IRSDKReader extends EventEmitter {
     iracing.on('Telemetry', (telemetry) => {
       this._telemetry = telemetry;
 
-      // Log CarIdxTrackSurface once to debug in_world detection
+      // Log telemetry diagnostics on first few updates to debug in_world detection
       if (!this._loggedTrackSurface && telemetry && telemetry.values) {
-        const surface = telemetry.values.CarIdxTrackSurface;
+        const vals = telemetry.values;
+        const surface = vals.CarIdxTrackSurface;
+
+        // Dump available telemetry keys once (helps identify what node-irsdk exposes)
+        const allKeys = Object.keys(vals);
+        const carIdxKeys = allKeys.filter((k) => k.startsWith('CarIdx'));
+        log('INFO', `Telemetry has ${allKeys.length} variables, CarIdx* variables: ${carIdxKeys.join(', ') || '(none)'}`);
+
+        // Session state info
+        log('INFO', `  SessionNum=${vals.SessionNum} SessionState=${vals.SessionState} IsOnTrack=${vals.IsOnTrack} IsReplayPlaying=${vals.IsReplayPlaying}`);
+
         if (surface) {
-          // node-irsdk-2023 returns STRINGS ("NotInWorld", "OnTrack", etc.)
+          // Detect value types — iRacing SDK uses integers (-1=NotInWorld,
+          // 0=OffTrack, 1=InPitStall, 2=AproachingPits, 3=OnTrack).
+          // Some node-irsdk versions may convert to strings.
           const active = surface.filter((v) =>
             (typeof v === 'string' && v !== 'NotInWorld') ||
             (typeof v === 'number' && v >= 0)
           ).length;
           const total = surface.length;
-          log('INFO', `CarIdxTrackSurface: ${active} in-world out of ${total} slots (type: ${typeof surface[0]})`);
-          // Show first entries that aren't NotInWorld
+          log('INFO', `CarIdxTrackSurface: ${active} in-world out of ${total} slots (type: ${typeof surface[0]}, sample[0..5]: ${JSON.stringify(surface.slice(0, 6))})`);
+          // Show entries that are in-world
           const nonEmpty = [];
           surface.forEach((v, i) => {
             if ((typeof v === 'string' && v !== 'NotInWorld') || (typeof v === 'number' && v >= 0)) {
@@ -168,6 +180,19 @@ class IRSDKReader extends EventEmitter {
         } else {
           log('WARN', 'CarIdxTrackSurface NOT available in telemetry');
         }
+
+        // Log fallback signals availability
+        const lapComp = vals.CarIdxLapCompleted;
+        const lapDist = vals.CarIdxLapDistPct;
+        if (lapComp) {
+          const withLaps = lapComp.filter((v) => typeof v === 'number' && v > 0).length;
+          log('INFO', `  CarIdxLapCompleted: ${withLaps} cars with laps > 0`);
+        }
+        if (lapDist) {
+          const onTrack = lapDist.filter((v) => typeof v === 'number' && v > 0 && v <= 1).length;
+          log('INFO', `  CarIdxLapDistPct: ${onTrack} cars with valid position`);
+        }
+
         this._loggedTrackSurface = true;
       }
 
@@ -246,9 +271,19 @@ class IRSDKReader extends EventEmitter {
    */
   _computeSOF(drivers) {
     // Filter to real, active, in-world drivers with valid iRating
-    const eligible = drivers.filter(
-      (d) => !d.is_spectator && !d.is_ai && d.in_world !== false && d.irating > 0
+    const humans = drivers.filter(
+      (d) => !d.is_spectator && !d.is_ai && d.irating > 0
     );
+    let eligible = humans.filter((d) => d.in_world !== false);
+
+    // Fallback: if in_world filter removes ALL human drivers but we have
+    // registered humans with valid iRating, CarIdxTrackSurface is likely
+    // unreliable (stale data, bridge started mid-session, replay quirk).
+    // Use the full human list so SOF is never stuck at 0 during a live session.
+    if (eligible.length === 0 && humans.length > 0) {
+      log('WARN', `in_world filter removed all ${humans.length} drivers from SOF — using fallback (all registered humans)`);
+      eligible = humans;
+    }
 
     if (eligible.length === 0) {
       return {
