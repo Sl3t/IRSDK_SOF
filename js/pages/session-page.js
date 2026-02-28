@@ -75,14 +75,22 @@ const SessionPage = (() => {
    */
   function _filterActiveDrivers(allDrivers) {
     if (!Array.isArray(allDrivers)) return [];
-    return allDrivers.filter((d) => {
-      // Exclude spectators and AI
-      if (d.is_spectator || d.is_ai) return false;
-      // Exclude drivers not in the world (registered but not connected)
-      // Default to true if in_world flag is not present (backward compat)
-      if (d.in_world === false) return false;
-      return true;
-    });
+
+    // Step 1: exclude spectators and AI
+    const humans = allDrivers.filter((d) => !d.is_spectator && !d.is_ai);
+
+    // Step 2: try to filter by in_world (telemetry-based: actually connected)
+    const inWorld = humans.filter((d) => d.in_world !== false);
+
+    // Fallback: if in_world filtering removes everyone, the telemetry
+    // data might not be available yet or CarIdxTrackSurface is unreliable.
+    // In that case, show all non-spectator/non-AI drivers.
+    if (inWorld.length === 0 && humans.length > 0) {
+      console.warn('[SessionPage] in_world filter removed all drivers, falling back to full list');
+      return humans;
+    }
+
+    return inWorld;
   }
 
   /**
@@ -137,15 +145,24 @@ const SessionPage = (() => {
     const trackName = sessionInfo.track_name || '';
     const trackConfig = sessionInfo.track_config || '';
     const sessionType = sessionInfo.session_type || '';
+    const sessionName = sessionInfo.session_name || '';
     const sessionTimeRemain = _formatTime(sessionInfo.session_time_remain);
+    const subsessionId = sessionInfo.subsession_id || sessionInfo.session_id || '';
+    const isOfficial = sessionInfo.is_official || false;
+    const category = sessionInfo.category || '';
+    const eventType = sessionInfo.event_type || '';
     const fullTrack = trackConfig && trackConfig !== trackName
       ? `${trackName} — ${trackConfig}` : trackName;
+
+    // Debug: log what we got from the bridge to console
+    console.log('[SessionPage] session info:', JSON.stringify(sessionInfo));
 
     return {
       drivers, conditions, myIrating, mySR,
       sofResult, decisionResult, criteriaDisplay,
       seriesName, trackName, trackConfig, sessionType,
-      sessionTimeRemain, fullTrack,
+      sessionName, sessionTimeRemain, fullTrack,
+      subsessionId, isOfficial, category, eventType,
     };
   }
 
@@ -166,7 +183,19 @@ const SessionPage = (() => {
                      style="padding:var(--spacing-lg);
                             max-width:var(--content-max-width); margin:0 auto;">`;
 
-    // --- Session header: Series + Track + Session Type + Time + Count ---
+    // --- Session header: Series + Track + Session Type + Time + Count + ID ---
+    const officialBadge = data.isOfficial
+      ? `<span style="font-family:var(--font-data); font-size:var(--text-xs);
+                color:var(--accent-green); background:rgba(0,255,0,0.1);
+                padding:2px 6px; border-radius:var(--radius-sm);
+                border:1px solid var(--accent-green);">OFFICIAL</span>`
+      : '';
+
+    const sessionIdBadge = data.subsessionId
+      ? `<span style="font-family:var(--font-data); font-size:var(--text-xs);
+                color:var(--text-muted);">#${data.subsessionId}</span>`
+      : '';
+
     html += `
       <div id="session-header" style="margin-bottom:var(--spacing-lg);
                   padding-bottom:var(--spacing-md);
@@ -187,6 +216,7 @@ const SessionPage = (() => {
                      color:var(--text-muted); text-transform:uppercase;
                      background:var(--bg-elevated); padding:2px 8px;
                      border-radius:var(--radius-sm);">${data.sessionType}</span>` : ''}
+          ${officialBadge}
           ${data.sessionTimeRemain ? `<span id="session-time-remain"
               style="font-family:var(--font-data); font-size:var(--text-sm);
                      color:var(--accent-yellow); background:var(--bg-elevated);
@@ -201,6 +231,7 @@ const SessionPage = (() => {
                      color:var(--text-muted);">
             ${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}
           </span>
+          ${sessionIdBadge}
         </div>
       </div>`;
 

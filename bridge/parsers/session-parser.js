@@ -7,8 +7,9 @@
  * Produces the "session" section of the session_update message:
  *   {
  *     session_type, session_name, session_num,
+ *     session_id, subsession_id,
  *     is_official, series_name, track_name,
- *     track_config, car_class
+ *     track_config, car_class, category, event_type
  *   }
  */
 
@@ -31,11 +32,15 @@ function parseSession(data) {
     session_type: null,
     session_name: null,
     session_num: null,
+    session_id: null,
+    subsession_id: null,
     is_official: false,
     series_name: null,
     track_name: null,
     track_config: null,
     car_class: null,
+    category: null,
+    event_type: null,
   };
 
   if (!data) {
@@ -56,10 +61,17 @@ function parseSession(data) {
   const seriesName = weekend.SeriesDisplayName
     || weekend.SeriesShortName
     || weekend.SeasonDisplayName
+    || weekend.SeriesID  // fallback to ID if names absent
     || null;
 
   // Official session flag — node-irsdk exposes this as a numeric 0/1 or string
   const isOfficial = toBoolean(weekend.Official);
+
+  // Additional identification fields
+  const sessionID = weekend.SessionID || weekend.SessionId || null;
+  const subsessionID = weekend.SubSessionID || weekend.SubSessionId || null;
+  const category = weekend.Category || null;
+  const eventType = weekend.EventType || null;
 
   // ---------------------------------------------------------------------------
   // Active session (SessionInfo.Sessions[])
@@ -97,6 +109,10 @@ function parseSession(data) {
   const sessionName = activeSession ? (activeSession.SessionName || activeSession.SessionType || null) : null;
   const sessionNum = activeSession ? (activeSession.SessionNum !== undefined ? activeSession.SessionNum : null) : null;
 
+  // Session duration from the YAML (e.g. "3600.0000 sec" or "unlimited")
+  const sessionTimeStr = activeSession ? (activeSession.SessionTime || null) : null;
+  const sessionLaps = activeSession ? (activeSession.SessionLaps || null) : null;
+
   // ---------------------------------------------------------------------------
   // Car class — typically found in WeekendInfo.WeekendOptions or DriverInfo
   // ---------------------------------------------------------------------------
@@ -110,11 +126,17 @@ function parseSession(data) {
     session_type: sessionType,
     session_name: sessionName,
     session_num: sessionNum,
+    session_id: sessionID,
+    subsession_id: subsessionID,
     is_official: isOfficial,
     series_name: seriesName,
     track_name: trackName,
     track_config: trackConfig,
     car_class: carClass,
+    category: category,
+    event_type: eventType,
+    session_duration: sessionTimeStr,
+    session_laps: sessionLaps,
   };
 }
 

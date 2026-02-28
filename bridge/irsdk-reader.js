@@ -51,6 +51,9 @@ class IRSDKReader extends EventEmitter {
     /** @type {object|null} Most recently assembled session_update message */
     this._latestMessage = null;
 
+    /** @type {boolean} Whether we've logged CarIdxTrackSurface diagnostics */
+    this._loggedTrackSurface = false;
+
     this._init();
   }
 
@@ -98,12 +101,55 @@ class IRSDKReader extends EventEmitter {
     iracing.on('SessionInfo', (sessionInfo) => {
       this._sessionInfo = sessionInfo;
       this._inSession = true;
-      log('INFO', 'SessionInfo updated');
+
+      // Diagnostic: log key WeekendInfo fields for series/session identification
+      const data = sessionInfo ? sessionInfo.data : null;
+      if (data && data.WeekendInfo) {
+        const wi = data.WeekendInfo;
+        log('INFO', 'SessionInfo updated — WeekendInfo:');
+        log('INFO', `  SeriesDisplayName: ${wi.SeriesDisplayName || '(absent)'}`);
+        log('INFO', `  SeriesShortName:   ${wi.SeriesShortName || '(absent)'}`);
+        log('INFO', `  SeasonDisplayName: ${wi.SeasonDisplayName || '(absent)'}`);
+        log('INFO', `  TrackDisplayName:  ${wi.TrackDisplayName || '(absent)'}`);
+        log('INFO', `  TrackName:         ${wi.TrackName || '(absent)'}`);
+        log('INFO', `  TrackConfigName:   ${wi.TrackConfigName || '(absent)'}`);
+        log('INFO', `  SubSessionID:      ${wi.SubSessionID || '(absent)'}`);
+        log('INFO', `  SessionID:         ${wi.SessionID || '(absent)'}`);
+        log('INFO', `  EventType:         ${wi.EventType || '(absent)'}`);
+        log('INFO', `  Category:          ${wi.Category || '(absent)'}`);
+        log('INFO', `  Official:          ${wi.Official}`);
+      } else {
+        log('INFO', 'SessionInfo updated (no WeekendInfo)');
+      }
+
+      // Diagnostic: log sessions array
+      if (data && data.SessionInfo && data.SessionInfo.Sessions) {
+        data.SessionInfo.Sessions.forEach((s, i) => {
+          log('INFO', `  Session[${i}]: num=${s.SessionNum} type=${s.SessionType} name=${s.SessionName} time=${s.SessionTime} laps=${s.SessionLaps}`);
+        });
+      }
+
+      // Diagnostic: log driver count and in_world stats
       this._buildAndEmit();
     });
 
     iracing.on('Telemetry', (telemetry) => {
       this._telemetry = telemetry;
+
+      // Log CarIdxTrackSurface once to debug in_world detection
+      if (!this._loggedTrackSurface && telemetry && telemetry.values) {
+        const surface = telemetry.values.CarIdxTrackSurface;
+        if (surface) {
+          const active = surface.filter((v) => v >= 0).length;
+          const total = surface.filter((v) => v !== undefined).length;
+          log('INFO', `CarIdxTrackSurface: ${active} in-world out of ${total} slots`);
+          log('INFO', `  Raw values (first 40): [${surface.slice(0, 40).join(', ')}]`);
+        } else {
+          log('WARN', 'CarIdxTrackSurface NOT available in telemetry');
+        }
+        this._loggedTrackSurface = true;
+      }
+
       this._buildAndEmit();
     });
 
