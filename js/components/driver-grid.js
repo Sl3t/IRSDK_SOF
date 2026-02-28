@@ -294,8 +294,36 @@ const DriverGrid = (() => {
     }
   }
 
+  /**
+   * Update the grid data and re-render the table in place (no full DOM rebuild).
+   * Used by the smart-refresh path to avoid screen flicker.
+   *
+   * @param {Array}  drivers   - Updated driver list
+   * @param {number} myIrating - User's current iRating
+   */
+  function refresh(drivers, myIrating) {
+    _drivers   = Array.isArray(drivers) ? drivers : [];
+    _myIrating = myIrating || 0;
+
+    // Update the header count
+    const gridEl = document.getElementById('driver-grid');
+    if (gridEl) {
+      const header = gridEl.querySelector('h4');
+      if (header) {
+        header.textContent = `Drivers (${_drivers.length})`;
+      }
+    }
+
+    // Re-render the table body
+    const tableContainer = document.getElementById('driver-grid-table');
+    if (tableContainer) {
+      tableContainer.innerHTML = _buildTable();
+    }
+  }
+
   return {
     render,
     sort,
+    refresh,
   };
 })();

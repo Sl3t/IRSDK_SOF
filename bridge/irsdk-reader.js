@@ -141,6 +141,18 @@ class IRSDKReader extends EventEmitter {
     const conditions = parseConditions(telemetryValues, sessionData);
     const sof = this._computeSOF(drivers);
 
+    // Augment session with telemetry timing data
+    if (telemetryValues) {
+      session.session_time = telemetryValues.SessionTime != null
+        ? telemetryValues.SessionTime : null;
+      session.session_time_remain = telemetryValues.SessionTimeRemain != null
+        ? telemetryValues.SessionTimeRemain : null;
+      // Use telemetry SessionNum for accurate active session detection
+      if (telemetryValues.SessionNum != null) {
+        session.session_num = telemetryValues.SessionNum;
+      }
+    }
+
     return {
       type: 'session_update',
       timestamp: new Date().toISOString(),
