@@ -18,11 +18,22 @@ echo.
 REM Navigate to the bridge directory (where this .bat file lives)
 cd /d "%~dp0"
 
+REM ---------------------------------------------------------------------------
+REM Use Laragon's Node.js if available (recommended for native module compat)
+REM Laragon bundles Node.js v18/v20 which is compatible with node-irsdk-2023.
+REM If running from Laragon Terminal, PATH is already set correctly.
+REM ---------------------------------------------------------------------------
+if exist "C:\laragon\bin\nodejs\node-v20\node.exe" (
+    set "PATH=C:\laragon\bin\nodejs\node-v20;%PATH%"
+) else if exist "C:\laragon\bin\nodejs\node-v18\node.exe" (
+    set "PATH=C:\laragon\bin\nodejs\node-v18;%PATH%"
+)
+
 REM Check that Node.js is installed
 where node >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Node.js is not installed or not in PATH.
-    echo         Please install Node.js v18+ from https://nodejs.org
+    echo         Use Laragon Terminal or install Node.js v20 LTS from https://nodejs.org
     echo.
     pause
     exit /b 1
