@@ -80,6 +80,8 @@ function parseSession(data) {
   // Additional identification fields
   const sessionID = weekend.SessionID || weekend.SessionId || null;
   const subsessionID = weekend.SubSessionID || weekend.SubSessionId || null;
+  const seriesID = weekend.SeriesID || weekend.SeriesId || null;
+  const seasonID = weekend.SeasonID || weekend.SeasonId || null;
   const category = weekend.Category || null;
   const eventType = weekend.EventType || null;
 
@@ -141,6 +143,8 @@ function parseSession(data) {
     session_num: sessionNum,
     session_id: sessionID,
     subsession_id: subsessionID,
+    series_id: seriesID,
+    season_id: seasonID,
     is_official: isOfficial,
     series_name: seriesName,
     track_name: trackName,

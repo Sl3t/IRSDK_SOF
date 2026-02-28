@@ -36,6 +36,38 @@
 const SessionPage = (() => {
 
   // =========================================================================
+  // Series name resolution cache
+  // =========================================================================
+
+  /** @type {Object<number, string>} series_id → resolved name */
+  const _seriesNameCache = {};
+  /** @type {Object<number, boolean>} series_id → fetch in progress */
+  const _seriesNamePending = {};
+
+  /**
+   * Asynchronously resolve a series name from the local DB via API,
+   * then trigger a page re-render so the name appears.
+   * @param {number} seriesId - iRacing series ID from IRSDK WeekendInfo
+   */
+  async function _resolveSeriesName(seriesId) {
+    try {
+      const list = await api.getSeriesList();
+      if (Array.isArray(list)) {
+        const match = list.find((s) => s.iracing_series_id === seriesId || s.iracing_series_id === String(seriesId));
+        if (match && match.series_name) {
+          _seriesNameCache[seriesId] = match.series_name;
+          // Trigger re-render so the resolved name appears
+          render();
+        }
+      }
+    } catch (e) {
+      console.warn('[SessionPage] Failed to resolve series name for ID', seriesId, e);
+    } finally {
+      _seriesNamePending[seriesId] = false;
+    }
+  }
+
+  // =========================================================================
   // Helpers
   // =========================================================================
 
@@ -141,7 +173,22 @@ const SessionPage = (() => {
     }));
 
     const sessionInfo = sessionData.session || {};
-    const seriesName = sessionInfo.series_name || '';
+    let seriesName = sessionInfo.series_name || '';
+    const seriesId = sessionInfo.series_id || null;
+
+    // Resolve series name from local DB when IRSDK only gives a fallback
+    // (e.g. "SportsCar — Practice" instead of the real series name).
+    // Uses a simple cache so the lookup only happens once per series_id.
+    if (seriesId && (!seriesName || seriesName.includes(' — '))) {
+      const cached = _seriesNameCache[seriesId];
+      if (cached) {
+        seriesName = cached;
+      } else if (!_seriesNamePending[seriesId]) {
+        _seriesNamePending[seriesId] = true;
+        _resolveSeriesName(seriesId);
+      }
+    }
+
     const trackName = sessionInfo.track_name || '';
     const trackConfig = sessionInfo.track_config || '';
     const sessionType = sessionInfo.session_type || '';

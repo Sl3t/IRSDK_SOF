@@ -100,6 +100,34 @@ if (!$irsdkConnected) {
 }
 
 // ---------------------------------------------------------------------------
+// Resolve series name from local DB using SeriesID from IRSDK
+// ---------------------------------------------------------------------------
+
+$session = $data['session'] ?? null;
+
+if ($session) {
+    $seriesId = $session['series_id'] ?? null;
+    $currentName = $session['series_name'] ?? null;
+
+    // If IRSDK didn't provide a useful series name but we have a SeriesID,
+    // look it up in our local favorite_series table (populated by /api/series/sync).
+    if ($seriesId && (!$currentName || strpos($currentName, ' — ') !== false)) {
+        try {
+            $db = Database::getInstance();
+            $row = $db->fetchOne(
+                "SELECT series_name FROM favorite_series WHERE iracing_series_id = ?",
+                [(int) $seriesId]
+            );
+            if ($row && !empty($row['series_name'])) {
+                $session['series_name'] = $row['series_name'];
+            }
+        } catch (Exception $e) {
+            // DB lookup failed — keep the original name, don't break the response
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Return full live data
 // ---------------------------------------------------------------------------
 
@@ -108,7 +136,7 @@ jsonResponse([
     'in_session'       => $inSession,
     'timestamp'        => $data['timestamp'] ?? date('c'),
     'age_seconds'      => $age,
-    'session'          => $data['session'] ?? null,
+    'session'          => $session,
     'drivers'          => $data['drivers'] ?? [],
     'track_conditions' => $data['track_conditions'] ?? null,
     'sof'              => $data['sof'] ?? null,
