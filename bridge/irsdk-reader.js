@@ -102,31 +102,41 @@ class IRSDKReader extends EventEmitter {
       this._sessionInfo = sessionInfo;
       this._inSession = true;
 
-      // Diagnostic: log key WeekendInfo fields for series/session identification
+      // Diagnostic: dump ALL WeekendInfo fields to find series data
       const data = sessionInfo ? sessionInfo.data : null;
       if (data && data.WeekendInfo) {
         const wi = data.WeekendInfo;
-        log('INFO', 'SessionInfo updated — WeekendInfo:');
-        log('INFO', `  SeriesDisplayName: ${wi.SeriesDisplayName || '(absent)'}`);
-        log('INFO', `  SeriesShortName:   ${wi.SeriesShortName || '(absent)'}`);
-        log('INFO', `  SeasonDisplayName: ${wi.SeasonDisplayName || '(absent)'}`);
-        log('INFO', `  TrackDisplayName:  ${wi.TrackDisplayName || '(absent)'}`);
-        log('INFO', `  TrackName:         ${wi.TrackName || '(absent)'}`);
-        log('INFO', `  TrackConfigName:   ${wi.TrackConfigName || '(absent)'}`);
-        log('INFO', `  SubSessionID:      ${wi.SubSessionID || '(absent)'}`);
-        log('INFO', `  SessionID:         ${wi.SessionID || '(absent)'}`);
-        log('INFO', `  EventType:         ${wi.EventType || '(absent)'}`);
-        log('INFO', `  Category:          ${wi.Category || '(absent)'}`);
-        log('INFO', `  Official:          ${wi.Official}`);
+        log('INFO', '=== SessionInfo updated — FULL WeekendInfo dump ===');
+        for (const [key, value] of Object.entries(wi)) {
+          // Skip WeekendOptions (nested object, log separately)
+          if (key === 'WeekendOptions' || key === 'TelemetryOptions') continue;
+          log('INFO', `  ${key}: ${JSON.stringify(value)}`);
+        }
+        // Also dump WeekendOptions if present
+        if (wi.WeekendOptions) {
+          log('INFO', '  --- WeekendOptions ---');
+          for (const [key, value] of Object.entries(wi.WeekendOptions)) {
+            log('INFO', `    ${key}: ${JSON.stringify(value)}`);
+          }
+        }
       } else {
         log('INFO', 'SessionInfo updated (no WeekendInfo)');
       }
 
-      // Diagnostic: log sessions array
+      // Log sessions array
       if (data && data.SessionInfo && data.SessionInfo.Sessions) {
         data.SessionInfo.Sessions.forEach((s, i) => {
           log('INFO', `  Session[${i}]: num=${s.SessionNum} type=${s.SessionType} name=${s.SessionName} time=${s.SessionTime} laps=${s.SessionLaps}`);
         });
+      }
+
+      // Log DriverInfo summary
+      if (data && data.DriverInfo) {
+        const di = data.DriverInfo;
+        log('INFO', `  DriverInfo: DriverCarIdx=${di.DriverCarIdx} DriverUserID=${di.DriverUserID}`);
+        if (di.Drivers) {
+          log('INFO', `  Drivers count: ${di.Drivers.length}`);
+        }
       }
 
       // Diagnostic: log driver count and in_world stats
