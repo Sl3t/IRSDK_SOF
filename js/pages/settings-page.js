@@ -9,7 +9,7 @@
  *   - Identity: My iRacing User ID, Name
  *   - Objectives: iRating target, SR minimum
  *   - API: OAuth2 client_id, client_secret (password fields), test connection
- *   - Bridge: WebSocket host, port, test connection
+ *   - iRacing API credentials
  *   - Decision: GO threshold slider (default 75), NOGO threshold slider (default 50)
  *   - Decision weights: 8 sliders (one per criterion) that must sum to 100%
  *   - Cache: TTL values, clear cache button
@@ -35,8 +35,6 @@ const SettingsPage = (() => {
     oauth_client_secret: '',
     iracing_email:       '',
     iracing_password:    '',
-    bridge_ws_host:   'localhost',
-    bridge_ws_port:   8182,
     threshold_go:     75,
     threshold_nogo:   50,
     weight_sof_ratio:         20,
@@ -206,35 +204,6 @@ const SettingsPage = (() => {
                        font-family:var(--font-data); font-size:var(--text-xs);
                        color:var(--text-muted);"></span>
           </div>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- SECTION: IRSDK Bridge -->
-        <!-- ============================================ -->
-        <div class="card" style="background:var(--bg-card); border:1px solid var(--border);
-                                  border-radius:var(--radius-md); padding:var(--spacing-md);
-                                  margin-bottom:var(--spacing-lg);">
-          <h4 style="font-family:var(--font-display); font-size:var(--text-sm);
-                     color:var(--accent-cyan); margin:0 0 var(--spacing-md) 0;
-                     text-transform:uppercase; letter-spacing:0.08em;">
-            IRSDK Bridge (WebSocket)
-          </h4>
-          <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--spacing-md);
-                      margin-bottom:var(--spacing-md);">
-            ${_inputField('bridge_ws_host', 'Host', val('bridge_ws_host'), 'text', 'localhost')}
-            ${_inputField('bridge_ws_port', 'Port', val('bridge_ws_port'), 'number', '8182')}
-          </div>
-          <button onclick="SettingsPage.testBridgeConnection()"
-                  style="padding:var(--spacing-xs) var(--spacing-md);
-                         background:var(--accent-cyan-dim); color:var(--accent-cyan);
-                         border:1px solid var(--accent-cyan); border-radius:var(--radius-md);
-                         font-family:var(--font-data); font-size:var(--text-sm);
-                         cursor:pointer; transition:all 150ms ease;">
-            Test Bridge Connection
-          </button>
-          <span id="bridge-test-result" style="margin-left:var(--spacing-sm);
-                     font-family:var(--font-data); font-size:var(--text-xs);
-                     color:var(--text-muted);"></span>
         </div>
 
         <!-- ============================================ -->
@@ -438,14 +407,6 @@ const SettingsPage = (() => {
       console.error('[SettingsPage] Failed to save settings to API:', err);
     }
 
-    // Update WebSocket connection if bridge settings changed
-    const newHost = settings.bridge_ws_host || 'localhost';
-    const newPort = settings.bridge_ws_port || 8182;
-    const newUrl = `ws://${newHost}:${newPort}`;
-    if (newUrl !== wsClient.getUrl()) {
-      wsClient.setUrl(newUrl);
-    }
-
     // Visual feedback
     const btn = document.getElementById('settings-save-btn');
     if (btn) {
@@ -551,54 +512,6 @@ const SettingsPage = (() => {
   }
 
   /**
-   * Test the IRSDK Bridge WebSocket connection.
-   */
-  function testBridgeConnection() {
-    const resultEl = document.getElementById('bridge-test-result');
-    if (resultEl) {
-      resultEl.textContent = 'Testing...';
-      resultEl.style.color = 'var(--accent-cyan)';
-    }
-
-    const host = document.querySelector('[data-setting="bridge_ws_host"]')?.value || 'localhost';
-    const port = document.querySelector('[data-setting="bridge_ws_port"]')?.value || '8182';
-    const url = `ws://${host}:${port}`;
-
-    try {
-      const testWs = new WebSocket(url);
-      const timeout = setTimeout(() => {
-        testWs.close();
-        if (resultEl) {
-          resultEl.textContent = 'Connection timed out';
-          resultEl.style.color = 'var(--accent-red)';
-        }
-      }, 5000);
-
-      testWs.onopen = () => {
-        clearTimeout(timeout);
-        testWs.close();
-        if (resultEl) {
-          resultEl.textContent = 'Bridge reachable!';
-          resultEl.style.color = 'var(--accent-green)';
-        }
-      };
-
-      testWs.onerror = () => {
-        clearTimeout(timeout);
-        if (resultEl) {
-          resultEl.textContent = 'Connection failed';
-          resultEl.style.color = 'var(--accent-red)';
-        }
-      };
-    } catch (err) {
-      if (resultEl) {
-        resultEl.textContent = 'Error: ' + err.message;
-        resultEl.style.color = 'var(--accent-red)';
-      }
-    }
-  }
-
-  /**
    * Clear all API cache via the backend.
    */
   async function clearCache() {
@@ -627,7 +540,6 @@ const SettingsPage = (() => {
     saveAll,
     testApiConnection,
     resetOAuthCredentials,
-    testBridgeConnection,
     clearCache,
     updateWeightDisplay,
   };

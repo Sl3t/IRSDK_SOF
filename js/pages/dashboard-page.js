@@ -2,11 +2,11 @@
  * DashboardPage — Main Dashboard Page Renderer
  * ===============================================
  * The landing page showing an overview of the user's iRacing status,
- * live conditions (if WebSocket connected), and favorite series cards.
+ * live conditions and favorite series cards.
  *
  * Layout:
  *   - Top bar: My iRating (big number + trend arrow) + My SR + IRSDK status
- *   - Conditions panel (if WebSocket connected, show live conditions)
+ *   - Conditions panel (live conditions from API)
  *   - Grid of favorite series cards (fetched from API)
  *   - Each card shows active sessions with quick SOF + mini GO/NOGO badge
  *   - Auto-refresh every 30 seconds (managed by App router)
@@ -25,7 +25,7 @@ const DashboardPage = (() => {
 
   /**
    * Render the dashboard page into the #app container.
-   * Fetches data from the API and WebSocket, then builds the full page HTML.
+   * Fetches data from the API and builds the full page HTML.
    */
   async function render() {
     const appContainer = document.getElementById('app');
@@ -43,12 +43,8 @@ const DashboardPage = (() => {
     const myIrating = profile.irating || profile.iRating || storage.get('my_irating', 0);
     const mySR = profile.safety_rating || profile.sr || storage.get('my_sr', 0);
     const irTrend = profile.irating_trend || profile.irating_change || 0;
-    const irsdkConnected = wsClient.isConnected();
-
-    // Use WebSocket conditions if available, otherwise API conditions
-    const wsData = wsClient.getLastData();
-    const wsConditions = wsData ? (wsData.track_conditions || wsData.conditions) : null;
-    const conditions = wsConditions || conditionsData;
+    // Use API conditions data
+    const conditions = conditionsData;
 
     // Favorites list
     const favorites = Array.isArray(favoritesData) ? favoritesData : (favoritesData?.series || []);
@@ -56,10 +52,6 @@ const DashboardPage = (() => {
     // Trend arrow
     const trendArrow = irTrend > 0 ? '&#9650;' : irTrend < 0 ? '&#9660;' : '&#9644;';
     const trendColor = irTrend > 0 ? 'var(--accent-green)' : irTrend < 0 ? 'var(--accent-red)' : 'var(--text-muted)';
-
-    // IRSDK status dot
-    const irsdkColor = irsdkConnected ? 'var(--accent-green)' : 'var(--accent-red)';
-    const irsdkLabel = irsdkConnected ? 'Connected' : 'Disconnected';
 
     // ----- Build HTML -----
     let html = `<div class="animate-fade-in" style="padding:var(--spacing-lg); max-width:var(--content-max-width); margin:0 auto;">`;
@@ -101,19 +93,6 @@ const DashboardPage = (() => {
           </span>
         </div>
 
-        <!-- Spacer -->
-        <span style="flex:1;"></span>
-
-        <!-- IRSDK Status -->
-        <div style="display:flex; align-items:center; gap:var(--spacing-xs);">
-          <span style="display:inline-block; width:10px; height:10px;
-                       border-radius:var(--radius-full); background:${irsdkColor};
-                       box-shadow:0 0 6px ${irsdkColor};"></span>
-          <span style="font-family:var(--font-data); font-size:var(--text-xs);
-                       color:var(--text-secondary);">
-            IRSDK: ${irsdkLabel}
-          </span>
-        </div>
       </div>`;
 
     // --- Conditions panel ---

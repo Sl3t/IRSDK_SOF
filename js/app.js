@@ -1,8 +1,8 @@
 /**
  * IRSDK SOF — SPA Router & Main Application Controller
  * ======================================================
- * Hash-based single-page application router that manages page navigation,
- * WebSocket lifecycle, and real-time data refresh orchestration.
+ * Hash-based single-page application router that manages page navigation
+ * and data refresh orchestration via the PHP API.
  *
  * Routes:
  *   #dashboard        — Main dashboard (default)
@@ -14,8 +14,7 @@
  *   #settings         — Application settings
  *
  * Dependencies (loaded before this script in index.html):
- *   storage, formatters, sofEngine, decisionEngine, charts,
- *   wsClient, api
+ *   storage, formatters, sofEngine, decisionEngine, charts, api
  *
  * Page modules (loaded via <script> tags added to index.html):
  *   DashboardPage, SeriesPage, SessionPage, DriverPage,
@@ -67,12 +66,6 @@ const App = (() => {
 
   /** Auto-refresh period in milliseconds. */
   const REFRESH_INTERVAL_MS = 30000;
-
-  /** Minimum interval between WebSocket-triggered re-renders (anti-flicker). */
-  const WS_RENDER_THROTTLE_MS = 5000;
-
-  /** Timestamp of last WebSocket-triggered render. */
-  let _lastWsRenderTime = 0;
 
   // =========================================================================
   // Helpers
@@ -260,7 +253,7 @@ const App = (() => {
 
   /**
    * Refresh the current page data without full DOM rebuild.
-   * Called by the auto-refresh interval and by WebSocket updates.
+   * Called by the auto-refresh interval.
    */
   async function _refreshCurrentPage() {
     if (!_currentRoute) return;
@@ -295,61 +288,12 @@ const App = (() => {
   }
 
   // =========================================================================
-  // WebSocket integration
-  // =========================================================================
-
-  /**
-   * Wire up WebSocket event handlers for live data updates.
-   * When session data arrives, refresh the page if we are on dashboard or session.
-   */
-  function _setupWebSocket() {
-    // Load WebSocket URL from settings (or use default)
-    const wsHost = storage.get('bridge_ws_host', 'localhost');
-    const wsPort = storage.get('bridge_ws_port', 8182);
-    const wsUrl = `ws://${wsHost}:${wsPort}`;
-
-    // Connect to the bridge
-    wsClient.connect(wsUrl);
-
-    // On session data update: refresh live pages (throttled to avoid flickering)
-    wsClient.onSessionUpdate((data) => {
-      if (_currentRoute === 'dashboard' || _currentRoute === 'session') {
-        const now = Date.now();
-        if (now - _lastWsRenderTime >= WS_RENDER_THROTTLE_MS) {
-          _lastWsRenderTime = now;
-          _refreshCurrentPage();
-        }
-      }
-
-      // Add join/leave events to the ticker if EventTicker is available
-      if (typeof EventTicker !== 'undefined' && data) {
-        if (data.type === 'driver_join' || data.event === 'join') {
-          EventTicker.addEvent('join', data.message || `${data.driver_name || 'Driver'} joined the session`);
-        } else if (data.type === 'driver_leave' || data.event === 'leave') {
-          EventTicker.addEvent('leave', data.message || `${data.driver_name || 'Driver'} left the session`);
-        } else if (data.sof) {
-          EventTicker.addEvent('sof', `SOF updated: ${data.sof}`);
-        }
-      }
-    });
-
-    // On connection state change: update UI indicators
-    wsClient.onConnectionChange((connected) => {
-      if (typeof EventTicker !== 'undefined') {
-        const msg = connected ? 'IRSDK Bridge connected' : 'IRSDK Bridge disconnected';
-        EventTicker.addEvent('info', msg);
-      }
-    });
-  }
-
-  // =========================================================================
   // Initialization
   // =========================================================================
 
   /**
    * Initialize the application.
-   * Called on DOMContentLoaded. Sets up the router, connects WebSocket,
-   * and renders the initial page.
+   * Called on DOMContentLoaded. Sets up the router and renders the initial page.
    */
   function init() {
     console.log('[App] Initializing IRSDK SOF application...');
@@ -363,9 +307,6 @@ const App = (() => {
 
     // Listen for hash changes (SPA navigation)
     window.addEventListener('hashchange', _onHashChange);
-
-    // Connect to the IRSDK Bridge WebSocket
-    _setupWebSocket();
 
     // Determine initial route
     const { route, param } = _parseHash();

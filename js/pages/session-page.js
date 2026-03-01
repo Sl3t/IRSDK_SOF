@@ -185,24 +185,13 @@ const SessionPage = (() => {
   }
 
   /**
-   * Gather session data from the best available source.
-   * Prefers WebSocket live data, falls back to REST API.
+   * Gather session data from the REST API.
    *
    * @returns {{ sessionData: object|null, isLive: boolean }}
    */
   async function _getSessionData() {
-    let sessionData = null;
-    const isLive = wsClient.isConnected();
-
-    if (isLive) {
-      sessionData = wsClient.getLastData();
-    }
-
-    if (!sessionData) {
-      sessionData = await api.getSessionLive();
-    }
-
-    return { sessionData, isLive };
+    const sessionData = await api.getSessionLive();
+    return { sessionData, isLive: false };
   }
 
   /**
@@ -500,7 +489,7 @@ const SessionPage = (() => {
     const appContainer = document.getElementById('app');
     if (!appContainer) return;
 
-    // Gather session data from WebSocket (preferred) or API
+    // Gather session data from API
     const { sessionData, isLive } = await _getSessionData();
 
     // Handle no data scenario
@@ -513,9 +502,9 @@ const SessionPage = (() => {
           </h2>
           <p style="font-family:var(--font-body); color:var(--text-secondary);
                     font-size:var(--text-base); max-width:400px; margin:0 auto;">
-            Connect to the IRSDK Bridge or wait for a session to load.
-            Check your <a href="#settings" style="color:var(--accent-cyan);">settings</a>
-            for WebSocket configuration.
+            Aucune donnée de session disponible.
+            Utilisez la page <a href="#series" style="color:var(--accent-cyan);">Séries</a>
+            pour sélectionner une série et lancer le polling.
           </p>
         </div>`;
       return;
