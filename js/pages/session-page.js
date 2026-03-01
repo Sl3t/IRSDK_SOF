@@ -1,28 +1,23 @@
 /**
  * SessionPage — Session Analysis Page Renderer (THE main page)
  * ==============================================================
- * Full session analysis combining all components: conditions, SOF gauge,
- * decision panel, criteria detail, iRating simulator, field summary,
- * driver grid, iRating distribution chart, and event ticker.
+ * Predictive SOF analysis using iRacing registration polling.
  *
  * Layout:
- *   - Header: Series name + Track + Session type + Time remaining + Driver count
- *   - Top row: ConditionsPanel (left) + SOFGauge (right)
+ *   - Header: Series name + Track + Session type + Time remaining + Newcomer count
+ *   - Top row: ConditionsPanel (left) + SOFGauge (right, predictive SOF)
  *   - Center: DecisionPanel (big GO/NOGO with score %)
- *   - Below: IRatingSimulator (gain/loss table)
- *   - Below: DriverGrid (compact rows)
+ *   - Below: IRatingSimulator (gain/loss table, predictive SOF)
+ *   - Below: DriverGrid (newcomers only: name + iRating)
  *
- * Smart refresh:
- *   On subsequent data updates, uses targeted DOM updates instead of
- *   full innerHTML replacement to avoid screen flicker / jumping.
+ * Predictive SOF flow:
+ *   1. At H-20 min: first poll → baseline snapshot (not counted in SOF)
+ *   2. From H-18 to H-0: poll every minute → newcomers detected by diff
+ *   3. SOF = average iRating of newcomers only
+ *   4. DriverGrid shows only newcomers
  *
- * Driver filtering:
- *   Spectators and AI drivers are excluded from the displayed list.
- *   Only real, active human drivers are shown.
- *
- * Data flow:
- *   - If WebSocket connected: uses live data from wsClient.getLastData()
- *   - If not connected: fetches static data from api.getSessionLive()
+ * Fallback:
+ *   When no predictive data is available, uses bridge/API live session data.
  *
  * Usage:
  *   SessionPage.render(sessionId);
@@ -31,6 +26,62 @@
 'use strict';
 
 const SessionPage = (() => {
+
+  // =========================================================================
+  // Predictive SOF state
+  // =========================================================================
+
+  /** @type {object|null} Latest newcomer data from registration polling */
+  let _predictiveData = null;
+  /** @type {number} Timestamp of last poll (ms) */
+  let _lastPollTime = 0;
+  /** Minimum interval between polls (ms) */
+  const POLL_INTERVAL_MS = 60000;
+
+  /**
+   * Calculate the next race start time based on the race interval.
+   * iRacing races run on fixed schedules (e.g., every 2 hours from 00:00 UTC).
+   * @param {number} intervalMinutes - Race interval in minutes
+   * @returns {string} ISO 8601 UTC string of next race start
+   */
+  function _computeRaceStartUtc(intervalMinutes) {
+    if (!intervalMinutes || intervalMinutes <= 0) return '';
+    const now = Date.now();
+    const intervalMs = intervalMinutes * 60 * 1000;
+    const nextStart = new Date(Math.ceil(now / intervalMs) * intervalMs);
+    return nextStart.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  /**
+   * Fetch predictive data from the registration polling system.
+   * Triggers a poll if enough time has elapsed, then fetches newcomers.
+   * @param {number} seriesId - iRacing series ID
+   * @param {number} sessionId - iRacing session ID for reg_drivers_list
+   * @param {string} raceStartUtc - Race start time in ISO 8601 UTC
+   * @returns {Promise<object|null>} Predictive data or null
+   */
+  async function _fetchPredictiveData(seriesId, sessionId, raceStartUtc) {
+    if (!seriesId || !raceStartUtc) return null;
+
+    try {
+      // Poll registration (every 60s max)
+      const now = Date.now();
+      if (sessionId && (now - _lastPollTime > POLL_INTERVAL_MS)) {
+        _lastPollTime = now;
+        await api.pollRegistration(sessionId, seriesId, raceStartUtc);
+      }
+
+      // Fetch latest newcomers
+      const result = await api.getNewcomers(seriesId, raceStartUtc);
+      if (result && !result.error) {
+        _predictiveData = result;
+      }
+    } catch (e) {
+      console.warn('[SessionPage] Predictive data fetch failed:', e);
+    }
+
+    return _predictiveData;
+  }
 
   // =========================================================================
   // Series name resolution cache
@@ -156,18 +207,33 @@ const SessionPage = (() => {
 
   /**
    * Extract and compute all data needed for rendering from raw session payload.
+   * When predictive data is available (newcomers from registration polling),
+   * it overrides the bridge data for SOF, decision, simulator, and driver grid.
    *
    * @param {object} sessionData - Raw session data
+   * @param {object|null} predictive - Predictive data from registration polling
    * @returns {object} Computed rendering data
    */
-  function _computeRenderData(sessionData) {
+  function _computeRenderData(sessionData, predictive) {
     const allDrivers = sessionData.drivers || sessionData.entries || [];
-    const drivers = _filterActiveDrivers(allDrivers);
+    const bridgeDrivers = _filterActiveDrivers(allDrivers);
     const conditions = sessionData.track_conditions || sessionData.conditions || sessionData.weather || null;
     const myIrating = sessionData.my_irating || storage.get('my_irating', 0);
     const mySR = sessionData.my_sr || storage.get('my_sr', 0);
 
-    const sofResult = sofEngine.calculateSOF(drivers, myIrating);
+    // Use predictive newcomers for SOF when available, fallback to bridge drivers
+    const hasPredictive = predictive && Array.isArray(predictive.newcomers) && predictive.newcomers.length > 0;
+    const drivers = hasPredictive
+      ? predictive.newcomers.map((n) => ({
+          user_id: n.customer_id,
+          user_name: n.display_name,
+          irating: n.irating,
+        }))
+      : bridgeDrivers;
+
+    const sofResult = hasPredictive
+      ? sofEngine.calculateSOF(drivers, myIrating)
+      : sofEngine.calculateSOF(bridgeDrivers, myIrating);
 
     const decisionResult = decisionEngine.evaluateDecision(
       { ...sessionData, sof: sofResult.value },
@@ -211,7 +277,8 @@ const SessionPage = (() => {
 
     return {
       drivers, conditions, myIrating, mySR,
-      sofResult, decisionResult,
+      sofResult, decisionResult, hasPredictive,
+      baselineCount: hasPredictive ? (predictive.baseline_count || 0) : 0,
       seriesName, trackName, trackConfig, sessionType,
       sessionName, sessionTimeRemain, sessionDuration,
       fullTrack, subsessionId, isOfficial, category, eventType,
@@ -289,7 +356,9 @@ const SessionPage = (() => {
           <span id="session-driver-count"
               style="font-family:var(--font-data); font-size:var(--text-sm);
                      color:var(--text-muted);">
-            ${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}
+            ${data.hasPredictive
+              ? `${data.drivers.length} newcomer${data.drivers.length !== 1 ? 's' : ''} / ${data.baselineCount} baseline`
+              : `${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}`}
           </span>
           ${sessionIdBadge}
         </div>
@@ -362,7 +431,9 @@ const SessionPage = (() => {
     // --- Header: driver count ---
     const countEl = document.getElementById('session-driver-count');
     if (countEl) {
-      countEl.textContent = `${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}`;
+      countEl.textContent = data.hasPredictive
+        ? `${data.drivers.length} newcomer${data.drivers.length !== 1 ? 's' : ''} / ${data.baselineCount} baseline`
+        : `${data.drivers.length} driver${data.drivers.length !== 1 ? 's' : ''}`;
     }
 
     // --- Header: session time remaining (or total duration as fallback) ---
@@ -450,8 +521,21 @@ const SessionPage = (() => {
       return;
     }
 
+    // Fetch predictive data (registration polling) if we have session info
+    const sessionInfo = sessionData.session || {};
+    const seriesId = sessionInfo.series_id || 0;
+    const iracingSessionId = sessionInfo.session_id || 0;
+    const raceIntervalMin = sessionInfo.race_interval_minutes
+      || storage.get('race_interval_minutes', 120);
+    const raceStartUtc = _computeRaceStartUtc(raceIntervalMin);
+
+    let predictive = null;
+    if (seriesId > 0 && raceStartUtc) {
+      predictive = await _fetchPredictiveData(seriesId, iracingSessionId, raceStartUtc);
+    }
+
     // Compute all rendering data
-    const data = _computeRenderData(sessionData);
+    const data = _computeRenderData(sessionData, predictive);
 
     // Smart refresh: if the page is already rendered, update in place
     const existingPage = document.getElementById('session-page-root');

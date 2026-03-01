@@ -301,6 +301,35 @@ const api = (() => {
   const saveSetting = (key, value) => post('settings/save', { key, value });
 
   // =========================================================================
+  // Registration polling (predictive SOF)
+  // =========================================================================
+
+  /**
+   * Poll iRacing for registered drivers and store in DB.
+   * First call creates the baseline; subsequent calls detect newcomers.
+   * @param {number} sessionId - iRacing session ID
+   * @param {number} seriesId - iRacing series ID
+   * @param {string} raceStartUtc - Race start time in ISO 8601 UTC
+   * @returns {Promise<object|null>}
+   */
+  const pollRegistration = (sessionId, seriesId, raceStartUtc) => post('registration/poll', {
+    session_id: sessionId,
+    series_id: seriesId,
+    race_start_utc: raceStartUtc,
+  });
+
+  /**
+   * Get newcomers and predictive SOF for an upcoming race.
+   * @param {number} seriesId - iRacing series ID
+   * @param {string} raceStartUtc - Race start time in ISO 8601 UTC
+   * @returns {Promise<object|null>}
+   */
+  const getNewcomers = (seriesId, raceStartUtc) => get('registration/newcomers', {
+    series_id: seriesId,
+    race_start_utc: raceStartUtc,
+  });
+
+  // =========================================================================
   // Connection check
   // =========================================================================
 
@@ -336,6 +365,8 @@ const api = (() => {
     getConditionsLive,
     getSettings,
     saveSetting,
+    pollRegistration,
+    getNewcomers,
     isConnected,
     getBaseUrl,
   };

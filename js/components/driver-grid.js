@@ -176,9 +176,6 @@ const DriverGrid = (() => {
 
     let rows = '';
     sorted.forEach((d, i) => {
-      const xpScore     = d.track_experience_score != null ? Math.round(d.track_experience_score) : null;
-      const dangerScore = d.danger_score != null ? Math.round(d.danger_score) : null;
-
       rows += `
         <tr class="driver-row" data-driver-id="${d.user_id}"
             style="cursor:pointer; transition:background var(--transition-fast);"
@@ -195,27 +192,6 @@ const DriverGrid = (() => {
                      font-weight:var(--weight-bold); text-align:right;">
             ${(d.irating || 0).toLocaleString()}
           </td>
-          <td style="${cellStyle} text-align:center;">
-            <span style="color:${_licColor(d.license)}; font-weight:var(--weight-semibold);">
-              ${d.license || '--'}
-            </span>
-          </td>
-          <td style="${cellStyle} color:var(--text-secondary); max-width:150px;
-                     overflow:hidden; text-overflow:ellipsis;">
-            ${d.car_name || '--'}
-          </td>
-          <td style="${cellStyle} text-align:center;">
-            <span style="color:${_scoreColor(xpScore, false)};
-                         font-weight:var(--weight-bold);">
-              ${xpScore !== null ? xpScore : '--'}
-            </span>
-          </td>
-          <td style="${cellStyle} text-align:center;">
-            <span style="color:${_scoreColor(dangerScore, true)};
-                         font-weight:var(--weight-bold);">
-              ${dangerScore !== null ? dangerScore : '--'}
-            </span>
-          </td>
         </tr>
       `;
     });
@@ -230,18 +206,10 @@ const DriverGrid = (() => {
                 onclick="DriverGrid.sort('user_name');">Name${_sortArrow('user_name')}</th>
             <th style="${headerStyle} text-align:right;"
                 onclick="DriverGrid.sort('irating');">iRating${_sortArrow('irating')}</th>
-            <th style="${headerStyle} text-align:center;"
-                onclick="DriverGrid.sort('license');">License${_sortArrow('license')}</th>
-            <th style="${headerStyle}"
-                onclick="DriverGrid.sort('car_name');">Car${_sortArrow('car_name')}</th>
-            <th style="${headerStyle} text-align:center;"
-                onclick="DriverGrid.sort('track_experience_score');">Track XP${_sortArrow('track_experience_score')}</th>
-            <th style="${headerStyle} text-align:center;"
-                onclick="DriverGrid.sort('danger_score');">Danger${_sortArrow('danger_score')}</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:var(--spacing-lg);">No drivers in session</td></tr>'}
+          ${rows || '<tr><td colspan="3" style="color:var(--text-muted); text-align:center; padding:var(--spacing-lg);">No newcomers yet</td></tr>'}
         </tbody>
       </table>
     `;
@@ -267,7 +235,7 @@ const DriverGrid = (() => {
         <h4 style="font-family:var(--font-display); font-size:var(--text-sm);
                    color:var(--accent-cyan); margin:0 0 var(--spacing-sm) 0;
                    text-transform:uppercase; letter-spacing:0.08em;">
-          Drivers (${_drivers.length})
+          Newcomers (${_drivers.length})
         </h4>
         <div id="driver-grid-table">
           ${_buildTable()}
@@ -312,7 +280,7 @@ const DriverGrid = (() => {
     if (gridEl) {
       const header = gridEl.querySelector('h4');
       if (header) {
-        header.textContent = `Drivers (${_drivers.length})`;
+        header.textContent = `Newcomers (${_drivers.length})`;
       }
     }
 

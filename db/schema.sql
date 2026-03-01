@@ -166,6 +166,29 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 
+-- --------------------------------------------------------------------------
+-- Table 9: registration_entries
+-- --------------------------------------------------------------------------
+-- Tracks driver registrations for upcoming races.
+-- Polled from iRacing /data/session/reg_drivers_list at regular intervals.
+-- is_baseline = 1 for the initial snapshot (H-20), 0 for newcomers after.
+-- Only newcomers (is_baseline = 0) are used for predictive SOF calculation.
+CREATE TABLE IF NOT EXISTS registration_entries (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    series_id       INTEGER NOT NULL,
+    session_id      INTEGER,
+    race_start_utc  TEXT NOT NULL,
+    customer_id     INTEGER NOT NULL,
+    display_name    TEXT,
+    irating         INTEGER,
+    license         TEXT,
+    car_name        TEXT,
+    is_baseline     INTEGER DEFAULT 0,
+    first_seen_at   TEXT NOT NULL,
+    UNIQUE(series_id, race_start_utc, customer_id)
+);
+
+
 -- ============================================================================
 -- Default settings (seed data)
 -- ============================================================================
