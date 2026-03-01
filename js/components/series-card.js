@@ -131,6 +131,7 @@ const SeriesCard = (() => {
                   display:flex; flex-direction:column; gap:var(--spacing-sm);
                   transition:border-color var(--transition-fast), box-shadow var(--transition-fast);
                   cursor:pointer;"
+           onclick="App.navigate('series-detail/${id}')"
            onmouseenter="this.style.borderColor='var(--border-hover)'; this.style.boxShadow='var(--shadow-card-hover)';"
            onmouseleave="this.style.borderColor='var(--border)'; this.style.boxShadow='var(--shadow-card)';">
 

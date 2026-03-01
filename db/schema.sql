@@ -104,17 +104,21 @@ CREATE TABLE IF NOT EXISTS irating_history (
 -- Table 5: favorite_series
 -- --------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS favorite_series (
-    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-    iracing_series_id      INTEGER UNIQUE,
-    series_name            TEXT,
-    category               TEXT,
-    license_group          TEXT,
-    is_favorite            INTEGER DEFAULT 0,
-    last_sof_avg           INTEGER,
-    current_track          TEXT,
-    current_car_classes    TEXT,
-    race_interval_minutes  INTEGER,
-    updated_at             TEXT
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    iracing_series_id           INTEGER UNIQUE,
+    series_name                 TEXT,
+    category                    TEXT,
+    license_group               TEXT,
+    is_favorite                 INTEGER DEFAULT 0,
+    last_sof_avg                INTEGER,
+    current_track               TEXT,
+    current_car_classes         TEXT,
+    race_interval_minutes       INTEGER,
+    -- H - timestamp: minutes before race to capture the initial (baseline) driver list
+    baseline_offset_minutes     INTEGER DEFAULT 120,
+    -- H - timestamp: minutes before race to start polling for active drivers (newcomers)
+    active_poll_offset_minutes  INTEGER DEFAULT 20,
+    updated_at                  TEXT
 );
 
 
@@ -167,7 +171,30 @@ CREATE TABLE IF NOT EXISTS settings (
 
 
 -- --------------------------------------------------------------------------
--- Table 9: registration_entries
+-- Table 9: series_race_sessions
+-- --------------------------------------------------------------------------
+-- Stores upcoming and recent race sessions for tracked series.
+-- Populated from iRacing race_guide / season data.
+-- Status flow: upcoming -> baseline_collected -> polling -> completed
+CREATE TABLE IF NOT EXISTS series_race_sessions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    series_id           INTEGER NOT NULL,
+    session_id          INTEGER,
+    race_start_utc      TEXT NOT NULL,
+    registration_open   INTEGER DEFAULT 1,
+    status              TEXT DEFAULT 'upcoming',
+    baseline_count      INTEGER DEFAULT 0,
+    newcomer_count      INTEGER DEFAULT 0,
+    predictive_sof      INTEGER DEFAULT 0,
+    practice_session_ids TEXT,
+    created_at          TEXT,
+    updated_at          TEXT,
+    UNIQUE(series_id, race_start_utc)
+);
+
+
+-- --------------------------------------------------------------------------
+-- Table 10: registration_entries
 -- --------------------------------------------------------------------------
 -- Tracks driver registrations for upcoming races.
 -- Polled from iRacing /data/session/reg_drivers_list at regular intervals.

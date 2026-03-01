@@ -222,6 +222,28 @@ const api = (() => {
    */
   const getSeriesSessions = (seriesId) => get('series/sessions', { series_id: seriesId });
 
+  /**
+   * Get full series detail (metadata + race sessions + H-timestamp params).
+   * @param {number|string} seriesId - The series ID
+   * @returns {Promise<object|null>}
+   */
+  const getSeriesDetail = (seriesId) => get('series/detail', { series_id: seriesId });
+
+  /**
+   * Update series H-timestamp parameters.
+   * @param {number} seriesId - The series ID
+   * @param {object} data - Fields to update (baseline_offset_minutes, active_poll_offset_minutes)
+   * @returns {Promise<object|null>}
+   */
+  const updateSeries = (seriesId, data) => post('series/update', { series_id: seriesId, ...data });
+
+  /**
+   * Fetch upcoming race sessions from iRacing race_guide for a series.
+   * @param {number} seriesId - The series ID
+   * @returns {Promise<object|null>}
+   */
+  const fetchSeriesSessions = (seriesId) => post('series/fetch-sessions', { series_id: seriesId });
+
   // =========================================================================
   // SOF / Decision endpoints
   // =========================================================================
@@ -357,6 +379,9 @@ const api = (() => {
     getSeriesFavorites,
     setSeriesFavorite,
     getSeriesSessions,
+    getSeriesDetail,
+    updateSeries,
+    fetchSeriesSessions,
     calculateSOF,
     evaluateDecision,
     getMyProfile,

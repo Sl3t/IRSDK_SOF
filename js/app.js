@@ -40,13 +40,14 @@ const App = (() => {
    * Dynamic routes use a prefix match (e.g. "session/" extracts the ID).
    */
   const ROUTES = {
-    'dashboard': { render: () => _getPage('DashboardPage').render() },
-    'series':    { render: () => _getPage('SeriesPage').render() },
-    'session':   { render: (id) => _getPage('SessionPage').render(id) },
-    'driver':    { render: (id) => _getPage('DriverPage').render(id) },
-    'profile':   { render: () => _getPage('ProfilePage').render() },
-    'history':   { render: () => _getPage('HistoryPage').render() },
-    'settings':  { render: () => _getPage('SettingsPage').render() },
+    'dashboard':     { render: () => _getPage('DashboardPage').render() },
+    'series':        { render: () => _getPage('SeriesPage').render() },
+    'series-detail': { render: (id) => _getPage('SeriesDetailPage').render(id) },
+    'session':       { render: (id) => _getPage('SessionPage').render(id) },
+    'driver':        { render: (id) => _getPage('DriverPage').render(id) },
+    'profile':       { render: () => _getPage('ProfilePage').render() },
+    'history':       { render: () => _getPage('HistoryPage').render() },
+    'settings':      { render: () => _getPage('SettingsPage').render() },
   };
 
   /** Default route when no hash is present or hash is unrecognized. */
@@ -96,6 +97,7 @@ const App = (() => {
       _pageRegistry = {
         ...(typeof DashboardPage !== 'undefined' && { DashboardPage }),
         ...(typeof SeriesPage !== 'undefined' && { SeriesPage }),
+        ...(typeof SeriesDetailPage !== 'undefined' && { SeriesDetailPage }),
         ...(typeof SessionPage !== 'undefined' && { SessionPage }),
         ...(typeof DriverPage !== 'undefined' && { DriverPage }),
         ...(typeof ProfilePage !== 'undefined' && { ProfilePage }),
@@ -159,10 +161,12 @@ const App = (() => {
    * @param {string} activeRoute - The current route name
    */
   function _updateNavActive(activeRoute) {
+    // Map sub-routes to their parent nav item
+    const navRoute = activeRoute === 'series-detail' ? 'series' : activeRoute;
     const links = document.querySelectorAll('.sidebar__link');
     links.forEach((link) => {
       const linkRoute = link.getAttribute('data-route');
-      if (linkRoute === activeRoute) {
+      if (linkRoute === navRoute) {
         link.classList.add('sidebar__link--active');
       } else {
         link.classList.remove('sidebar__link--active');

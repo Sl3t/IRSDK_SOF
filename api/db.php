@@ -57,6 +57,8 @@ class Database
 
         if ($needsInit) {
             $this->initSchema();
+        } else {
+            $this->runMigrations();
         }
     }
 
@@ -443,5 +445,40 @@ class Database
 
         $sql = file_get_contents($schemaFile);
         $this->pdo->exec($sql);
+    }
+
+    /**
+     * Runs incremental migrations for existing databases.
+     * Each migration checks if it's needed before applying.
+     */
+    private function runMigrations(): void
+    {
+        // Migration 1: Add H-timestamp columns to favorite_series
+        $cols = $this->fetchAll("PRAGMA table_info(favorite_series)");
+        $colNames = array_column($cols, 'name');
+
+        if (!in_array('baseline_offset_minutes', $colNames, true)) {
+            $this->pdo->exec("ALTER TABLE favorite_series ADD COLUMN baseline_offset_minutes INTEGER DEFAULT 120");
+        }
+        if (!in_array('active_poll_offset_minutes', $colNames, true)) {
+            $this->pdo->exec("ALTER TABLE favorite_series ADD COLUMN active_poll_offset_minutes INTEGER DEFAULT 20");
+        }
+
+        // Migration 2: Create series_race_sessions table
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS series_race_sessions (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            series_id           INTEGER NOT NULL,
+            session_id          INTEGER,
+            race_start_utc      TEXT NOT NULL,
+            registration_open   INTEGER DEFAULT 1,
+            status              TEXT DEFAULT 'upcoming',
+            baseline_count      INTEGER DEFAULT 0,
+            newcomer_count      INTEGER DEFAULT 0,
+            predictive_sof      INTEGER DEFAULT 0,
+            practice_session_ids TEXT,
+            created_at          TEXT,
+            updated_at          TEXT,
+            UNIQUE(series_id, race_start_utc)
+        )");
     }
 }

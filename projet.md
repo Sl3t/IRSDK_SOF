@@ -1,7 +1,7 @@
 # IRSDK SOF Agent — Plan de Projet Complet
 
-> **Version** : 3.0 — 2026-02-27
-> **Statut** : EN DÉVELOPPEMENT (OAuth ✅ | Séries ✅ | Enrichissement ✅ | Bridge ✅ code prêt)
+> **Version** : 4.0 — 2026-03-01
+> **Statut** : EN DÉVELOPPEMENT (OAuth ✅ | Séries ✅ | Enrichissement ✅ | Bridge ✅ | Série détail + Sessions ✅ | Polling multi-practice ✅)
 > **Stack** : HTML / CSS / JS / PHP + Bridge Node.js (IRSDK)
 > **Serveur** : Laragon (PHP 8.x + Apache) sur SIM PC 1
 > **BDD** : SQLite (via PHP PDO) — fichier `db/irsdk_sof.sqlite`
@@ -313,7 +313,7 @@ Serveur web central qui :
 - Pas de serveur à installer (SQLite intégré à PHP)
 - Schéma défini dans `db/schema.sql`
 
-### D.2 — Schéma prévu (8 tables)
+### D.2 — Schéma prévu (10 tables)
 
 #### D.2.1 — `drivers` (Pilotes rencontrés)
 | Champ | Type | Description |
@@ -408,7 +408,43 @@ Serveur web central qui :
 | current_track | VARCHAR(100) | Circuit de la semaine en cours |
 | current_car_classes | VARCHAR(200) | Classes de voitures |
 | race_interval_minutes | INT | Fréquence des courses (ex: 60, 120) |
+| baseline_offset_minutes | INT (défaut 120) | H-timestamp : minutes avant course pour capturer la baseline (liste initiale des pilotes inscrits) |
+| active_poll_offset_minutes | INT (défaut 20) | H-timestamp : minutes avant course pour commencer le polling actif (détection pilotes actifs par différence) |
 | updated_at | DATETIME | Dernière mise à jour |
+
+#### D.2.5b — `series_race_sessions` (Sessions de course par série)
+| Champ | Type | Description |
+|-------|------|-------------|
+| id | INT (PK, auto) | Identifiant interne |
+| series_id | INT | Référence vers favorite_series.iracing_series_id |
+| session_id | INT | ID session iRacing |
+| race_start_utc | TEXT | Heure de départ (UTC ISO 8601) |
+| registration_open | BOOLEAN | Inscription ouverte |
+| status | TEXT | upcoming → baseline_collected → polling → completed |
+| baseline_count | INT | Nombre de pilotes dans la baseline |
+| newcomer_count | INT | Nombre de nouveaux pilotes détectés |
+| predictive_sof | INT | SOF prédictif calculé à partir des newcomers |
+| practice_session_ids | JSON | IDs de TOUS les practices ouverts pour cette session |
+| created_at | DATETIME | Date de création |
+| updated_at | DATETIME | Dernière mise à jour |
+
+> **Note** : Le polling des pilotes actifs se fait sur TOUS les practices ouverts
+> de la série (pas un seul), pour capturer tous les pilotes qui s'échauffent avant la course.
+
+#### D.2.5c — `registration_entries` (Inscriptions aux courses)
+| Champ | Type | Description |
+|-------|------|-------------|
+| id | INT (PK, auto) | Identifiant interne |
+| series_id | INT | ID série iRacing |
+| session_id | INT | ID session iRacing |
+| race_start_utc | TEXT | Heure de départ associée |
+| customer_id | INT | ID pilote iRacing |
+| display_name | TEXT | Nom du pilote |
+| irating | INT | iRating au moment du poll |
+| license | TEXT | Licence (ex: "B 3.45") |
+| car_name | TEXT | Voiture utilisée |
+| is_baseline | BOOLEAN | 1 = snapshot initial, 0 = newcomer détecté après |
+| first_seen_at | DATETIME | Date/heure de première détection |
 
 #### D.2.6 — `driver_track_stats` (Cache des stats pilote par circuit)
 | Champ | Type | Description |
@@ -685,6 +721,24 @@ Session détectée (IRSDK) → Liste de 24 pilotes
 │  → Filtres : Road / Oval / Dirt / Licence                    │
 │  → Cocher les séries favorites (sauvegardé en BDD)           │
 │  → Affichage du circuit actuel de la semaine par série       │
+│  → Clic sur une carte → PAGE 1b DÉTAIL SÉRIE                │
+└──────────────────────┬──────────────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  PAGE 1b — DÉTAIL SÉRIE (#series-detail/{id})                │
+│                                                              │
+│  Informations complètes de la série sélectionnée :           │
+│  → Catégorie, licence, circuit actuel, voitures             │
+│  → Intervalle courses, SOF moyen                             │
+│  → Paramètres H-Timestamp configurables :                    │
+│     - H-Baseline (min avant course pour snapshot initial)    │
+│     - H-Active (min avant course pour polling différentiel)  │
+│  → Tableau des sessions de course à venir :                  │
+│     - Heure départ, countdown, statut, baseline count,       │
+│       newcomers, SOF prédictif, practices ouverts            │
+│  → Bouton "Fetch Sessions" (charge depuis iRacing race_guide)│
+│  → Le polling actif scanne TOUS les practices ouverts        │
+│     de la série, pas un seul                                 │
 └──────────────────────┬──────────────────────────────────────┘
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -727,6 +781,8 @@ Session détectée (IRSDK) → Liste de 24 pilotes
 + PAGE 5 — MON PROFIL : Évolution iRating, SR, historique courses
 + PAGE 6 — HISTORIQUE : Sessions passées, décisions prises, résultats
 + PAGE 7 — RÉGLAGES : Config (credentials, seuils, poids critères, BDD)
+
+Note : 8 pages au total (Séries, Détail Série, Dashboard, Session, Driver, Profil, Historique, Settings)
 ```
 
 ### H.2 — Dashboard (Page 2) — Composants détaillés
@@ -868,6 +924,9 @@ IRSDK_SOF/
 │   │   └── history.php                # GET — historique sessions
 │   ├── series/
 │   │   ├── list.php                   # GET — catalogue séries
+│   │   ├── detail.php                 # GET — détail série + sessions de course
+│   │   ├── update.php                 # POST — maj paramètres H-timestamp
+│   │   ├── fetch-sessions.php         # POST — fetch sessions depuis race_guide
 │   │   ├── favorites.php              # GET/POST — séries favorites
 │   │   └── sessions.php              # GET — sessions actives d'une série
 │   ├── sof/
@@ -887,8 +946,12 @@ IRSDK_SOF/
 │   └── settings/
 │       └── index.php                  # GET/POST — configuration
 │
+│   ├── registration/
+│   │   ├── poll.php                   # POST — polling multi-practice (tous les practices ouverts)
+│   │   └── newcomers.php              # GET — nouveaux inscrits + SOF prédictif
+│
 ├── db/                                # MODULE 3 — Base de données
-│   └── schema.sql                     # Script de création (8 tables)
+│   └── schema.sql                     # Script de création (10 tables)
 │
 ├── css/                               # MODULE 7 — Styles
 │   ├── variables.css                  # Variables CSS (couleurs, fonts, spacing)
@@ -914,7 +977,7 @@ IRSDK_SOF/
 │   ├── charts.js                      # Graphiques (ApexCharts / Chart.js)
 │   ├── components/
 │   │   ├── status-bar.js              # Barre de statut connexions
-│   │   ├── series-card.js             # Carte série favorite
+│   │   ├── series-card.js             # Carte série favorite (clic → série détail)
 │   │   ├── session-card.js            # Carte session active
 │   │   ├── conditions-panel.js        # Panneau conditions piste
 │   │   ├── sof-gauge.js              # Jauge SOF
@@ -935,7 +998,8 @@ IRSDK_SOF/
 │   └── img/                           # Images, icônes, logos
 │
 ├── index.html                         # Page principale (SPA)
-│   ├── #series                        # Vue séries
+│   ├── #series                        # Vue séries (catalogue)
+│   ├── #series-detail/{id}            # Vue détail série + sessions de course + H-timestamp params
 │   ├── #dashboard                     # Vue dashboard
 │   ├── #session/{id}                  # Vue analyse session
 │   ├── #driver/{id}                   # Vue fiche pilote
@@ -965,7 +1029,7 @@ IRSDK_SOF/
 | **[F.6]** | Seuils GO/NOGO | ✅ **Configurables** dans les réglages |
 | **[F.2]** | Critères de décision | ✅ Validés (8 critères pondérés) |
 
-### Avancement des modules (v3.0 — 2026-02-27)
+### Avancement des modules (v4.0 — 2026-03-01)
 
 | Module | Statut | Détail |
 |--------|--------|--------|
@@ -973,7 +1037,13 @@ IRSDK_SOF/
 | **Séries catalogue** | ✅ Terminé | Sync 71 séries Road via `/data/series/get`, cartes avec badges licence |
 | **Enrichissement** | ✅ Terminé | Tracks + schedule via `/data/series/seasons`, current_track en base |
 | **Bridge IRSDK** | ✅ Code prêt | server.js + parsers + WebSocket client + live-data.json → À tester avec iRacing |
-| **Frontend SPA** | ✅ Structure | 7 pages (Dashboard, Séries, Session, Driver, Profil, Historique, Settings) |
+| **Frontend SPA** | ✅ Structure | 8 pages (Séries, Détail Série, Dashboard, Session, Driver, Profil, Historique, Settings) |
+| **Détail Série** | ✅ Terminé | Page `#series-detail/{id}` : infos série, paramètres H-timestamp, table sessions de course |
+| **Sessions de course** | ✅ Terminé | Table `series_race_sessions`, fetch depuis race_guide, statut (upcoming → polling → completed) |
+| **Polling multi-practice** | ✅ Terminé | `poll.php` scanne TOUS les practices ouverts pour une série (pas un seul) |
+| **H-Timestamp params** | ✅ Terminé | `baseline_offset_minutes` + `active_poll_offset_minutes` configurables par série |
+| **SOF prédictif** | ✅ Terminé | Calcul depuis les newcomers (pilotes inscrits après la baseline) |
+| **Migration auto** | ✅ Terminé | `db.php` applique automatiquement les migrations (ALTER TABLE) sur BDD existantes |
 | **Moteur SOF** | ✅ Code prêt | Calcul côté client (sofEngine) + côté serveur |
 | **Moteur décision** | ✅ Code prêt | 8 critères pondérés, seuils configurables |
 | **Analyse pilotes** | ⏳ En cours | Endpoints créés, enrichissement API REST à brancher |
@@ -983,6 +1053,7 @@ IRSDK_SOF/
 
 ---
 
-> **Version 3.0** — OAuth fonctionnel, séries synchronisées, bridge prêt à tester.
+> **Version 4.0** — Restructuration : tables séries/sessions, page détail série avec paramètres H-timestamp,
+> polling multi-practice pour détection des pilotes actifs sur tous les practices ouverts.
 >
 > Chaque section indexée (A.1, B.2.3, F.2.6, H.3.4, etc.) peut être référencée directement dans vos retours.
