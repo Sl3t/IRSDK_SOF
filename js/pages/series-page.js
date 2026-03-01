@@ -101,14 +101,19 @@ const SeriesPage = (() => {
 
   /**
    * Render the series catalog page into the #app container.
+   * Uses cached data if available — only fetches on first visit or after sync.
+   * @param {object} [opts] - Options
+   * @param {boolean} [opts.forceRefresh=false] - Force re-fetch from API
    */
-  async function render() {
+  async function render(opts = {}) {
     const appContainer = document.getElementById('app');
     if (!appContainer) return;
 
-    // Fetch full series list from API
-    const data = await api.getSeriesList();
-    _allSeries = Array.isArray(data) ? data : (data?.series || []);
+    // Only fetch from API if cache is empty or force-refresh requested
+    if (_allSeries.length === 0 || opts.forceRefresh) {
+      const data = await api.getSeriesList();
+      _allSeries = Array.isArray(data) ? data : (data?.series || []);
+    }
 
     const licenses = ['All', 'R', 'D', 'C', 'B', 'A'];
 
@@ -249,6 +254,11 @@ const SeriesPage = (() => {
       </div>`;
 
     appContainer.innerHTML = html;
+
+    // Auto-sync from iRacing if no series data exists
+    if (_allSeries.length === 0 && !_syncing) {
+      syncFromIRacing();
+    }
   }
 
   // =========================================================================
@@ -304,8 +314,8 @@ const SeriesPage = (() => {
         resultEl.style.color = result.total > 0 ? 'var(--accent-green)' : 'var(--accent-orange, orange)';
       }
 
-      // Reload series list with enriched data
-      await render();
+      // Reload series list with enriched data (force refresh from API)
+      await render({ forceRefresh: true });
 
     } catch (err) {
       if (resultEl) {

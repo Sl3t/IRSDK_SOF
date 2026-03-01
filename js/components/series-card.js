@@ -4,7 +4,7 @@
  * Renders a card for a single iRacing series in the catalog / dashboard.
  *
  * Displays: series name, category badge (Road/Oval/Dirt), license class badge
- * (colored by class), current track, next race countdown, average SOF,
+ * (colored by class), current track, next race countdown, race interval,
  * and a favorite star toggle.
  *
  * Data contract (series object):
@@ -202,11 +202,11 @@ const SeriesCard = (() => {
           </div>
           <div style="text-align:right;">
             <span style="color:var(--text-muted); font-size:var(--text-xs);
-                         font-family:var(--font-data); display:block;">AVG SOF</span>
+                         font-family:var(--font-data); display:block;">INTERVAL</span>
             <span class="data-value" style="color:var(--text-primary);
                          font-family:var(--font-data); font-size:var(--text-sm);
                          font-weight:var(--weight-bold);">
-              ${sof > 0 ? sof.toLocaleString() : '--'}
+              ${interval > 0 ? (interval >= 60 ? Math.round(interval / 60) + 'h' : interval + 'min') : '--'}
             </span>
           </div>
         </div>
