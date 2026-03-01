@@ -159,17 +159,19 @@ const DriverGrid = (() => {
     const sorted = _sortDrivers(_drivers, _sortColumn, _sortDirection);
 
     const headerStyle = `
-      padding:var(--spacing-xs) var(--spacing-sm);
+      padding:3px var(--spacing-sm);
       font-family:var(--font-data); font-size:var(--text-xs);
       color:var(--text-muted); text-transform:uppercase;
       cursor:pointer; user-select:none; white-space:nowrap;
       border-bottom:1px solid var(--border); text-align:left;
+      line-height:1.2;
     `;
 
     const cellStyle = `
-      padding:var(--spacing-xs) var(--spacing-sm);
+      padding:2px var(--spacing-sm);
       font-family:var(--font-data); font-size:var(--text-sm);
       border-bottom:1px solid var(--border); white-space:nowrap;
+      line-height:1.3;
     `;
 
     let rows = '';

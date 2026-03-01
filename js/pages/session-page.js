@@ -9,11 +9,8 @@
  *   - Header: Series name + Track + Session type + Time remaining + Driver count
  *   - Top row: ConditionsPanel (left) + SOFGauge (right)
  *   - Center: DecisionPanel (big GO/NOGO with score %)
- *   - Below: CriteriaDetail (expandable)
  *   - Below: IRatingSimulator (gain/loss table)
- *   - Below: FieldSummary
- *   - Below: DriverGrid + IRatingChart
- *   - Bottom: EventTicker (if live)
+ *   - Below: DriverGrid (compact rows)
  *
  * Smart refresh:
  *   On subsequent data updates, uses targeted DOM updates instead of
@@ -178,11 +175,6 @@ const SessionPage = (() => {
       mySR
     );
 
-    const criteriaDisplay = decisionResult.criteria.map((c) => ({
-      ...c,
-      weight: Math.round(c.weight * 100),
-    }));
-
     const sessionInfo = sessionData.session || {};
     let seriesName = sessionInfo.series_name || '';
     const seriesId = sessionInfo.series_id || null;
@@ -219,7 +211,7 @@ const SessionPage = (() => {
 
     return {
       drivers, conditions, myIrating, mySR,
-      sofResult, decisionResult, criteriaDisplay,
+      sofResult, decisionResult,
       seriesName, trackName, trackConfig, sessionType,
       sessionName, sessionTimeRemain, sessionDuration,
       fullTrack, subsessionId, isOfficial, category, eventType,
@@ -333,31 +325,10 @@ const SessionPage = (() => {
         })}
       </div>`;
 
-    // --- Criteria Detail ---
-    html += `
-      <div id="session-criteria-container" style="margin-bottom:var(--spacing-lg);">
-        ${CriteriaDetail.render(data.criteriaDisplay)}
-      </div>`;
-
     // --- iRating Simulator ---
     html += `
       <div id="session-simulator-container" style="margin-bottom:var(--spacing-lg);">
         ${IRatingSimulator.render(data.myIrating, data.sofResult.value, data.drivers.length)}
-      </div>`;
-
-    // --- Field Summary ---
-    html += `
-      <div id="session-field-container" style="margin-bottom:var(--spacing-lg);">
-        ${FieldSummary.render(data.drivers)}
-      </div>`;
-
-    // --- iRating Chart ---
-    html += `
-      <div style="margin-bottom:var(--spacing-lg);">
-        <div class="card" style="background:var(--bg-card); border:1px solid var(--border);
-                                  border-radius:var(--radius-md); padding:var(--spacing-md);">
-          <div id="session-irating-chart" style="min-height:280px;"></div>
-        </div>
       </div>`;
 
     // --- Driver Grid (full width) ---
@@ -366,22 +337,9 @@ const SessionPage = (() => {
         ${DriverGrid.render(data.drivers, data.myIrating)}
       </div>`;
 
-    // --- Event Ticker (if live) ---
-    if (isLive) {
-      html += `
-        <div style="margin-bottom:var(--spacing-lg);">
-          ${EventTicker.render()}
-        </div>`;
-    }
-
     html += '</div>';
 
     appContainer.innerHTML = html;
-
-    // Post-render: Initialize the iRating distribution chart
-    setTimeout(() => {
-      IRatingChart.render('session-irating-chart', data.drivers, data.myIrating);
-    }, 50);
   }
 
   // =========================================================================
@@ -444,12 +402,6 @@ const SessionPage = (() => {
       });
     }
 
-    // --- Criteria Detail ---
-    const criteriaContainer = document.getElementById('session-criteria-container');
-    if (criteriaContainer) {
-      criteriaContainer.innerHTML = CriteriaDetail.render(data.criteriaDisplay);
-    }
-
     // --- iRating Simulator ---
     const simContainer = document.getElementById('session-simulator-container');
     if (simContainer) {
@@ -458,17 +410,8 @@ const SessionPage = (() => {
       );
     }
 
-    // --- Field Summary ---
-    const fieldContainer = document.getElementById('session-field-container');
-    if (fieldContainer) {
-      fieldContainer.innerHTML = FieldSummary.render(data.drivers);
-    }
-
     // --- Driver Grid (uses its own targeted refresh) ---
     DriverGrid.refresh(data.drivers, data.myIrating);
-
-    // --- iRating Chart (re-render in existing container) ---
-    IRatingChart.render('session-irating-chart', data.drivers, data.myIrating);
   }
 
   // =========================================================================
