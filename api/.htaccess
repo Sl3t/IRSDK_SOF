@@ -36,6 +36,14 @@
     RewriteRule ^series/sync/?$ series/sync.php [L,QSA]
     RewriteRule ^series/enrich/?$ series/enrich.php [L,QSA]
     RewriteRule ^series/debug-sync/?$ series/debug-sync.php [L,QSA]
+    RewriteRule ^series/search/?$ series/search.php [L,QSA]
+    RewriteRule ^series/detail/?$ series/detail.php [L,QSA]
+    RewriteRule ^series/update/?$ series/update.php [L,QSA]
+    RewriteRule ^series/fetch-sessions/?$ series/fetch-sessions.php [L,QSA]
+
+    # Route /api/registration/* endpoints
+    RewriteRule ^registration/poll/?$ registration/poll.php [L,QSA]
+    RewriteRule ^registration/newcomers/?$ registration/newcomers.php [L,QSA]
 
     # Route /api/session/* endpoints
     RewriteRule ^session/live/?$ session/live.php [L,QSA]

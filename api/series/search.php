@@ -25,8 +25,8 @@ requireMethod('POST');
 $input = getJsonInput();
 $query = trim((string)($input['query'] ?? ''));
 
-if ($query === '' || mb_strlen($query) < 2) {
-    jsonError('query is required and must be at least 2 characters', 400);
+if ($query === '' || mb_strlen($query) < 4) {
+    jsonError('query is required and must be at least 4 characters', 400);
 }
 
 $db = Database::getInstance();

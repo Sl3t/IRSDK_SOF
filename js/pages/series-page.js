@@ -348,8 +348,8 @@ const SeriesPage = (() => {
     const resultsEl = document.getElementById('iracing-search-results');
     const query = (input?.value || '').trim();
 
-    if (query.length < 2) {
-      if (statusEl) { statusEl.textContent = 'Min. 2 caractères'; statusEl.style.color = 'var(--accent-orange)'; }
+    if (query.length < 4) {
+      if (statusEl) { statusEl.textContent = 'Min. 4 caractères'; statusEl.style.color = 'var(--accent-orange)'; }
       return;
     }
 
@@ -361,7 +361,9 @@ const SeriesPage = (() => {
       const result = await api.searchSeries(query);
 
       if (!result || !result.success || !result.results) {
-        if (statusEl) { statusEl.textContent = result?.message || 'Erreur'; statusEl.style.color = 'var(--accent-red)'; }
+        const msg = result?.message || result?.error || 'Erreur — vérifiez la console (F12)';
+        if (statusEl) { statusEl.textContent = msg; statusEl.style.color = 'var(--accent-red)'; }
+        console.error('[search] API response:', result);
         return;
       }
 
