@@ -22,6 +22,9 @@ const SeriesPage = (() => {
   /** Syncing flag. */
   let _syncing = false;
 
+  /** Searching flag. */
+  let _searching = false;
+
   /** Currently selected license filter. */
   let _licenseFilter = 'All';
 
@@ -168,6 +171,42 @@ const SeriesPage = (() => {
                      font-size:var(--text-xs); color:var(--text-muted);"></span>
         </div>
 
+        <!-- ============================================ -->
+        <!-- Search iRacing API panel -->
+        <!-- ============================================ -->
+        <div class="card" style="background:var(--bg-card); border:1px solid var(--border);
+                                  border-radius:var(--radius-md); padding:var(--spacing-md);
+                                  margin-bottom:var(--spacing-lg);">
+          <h4 style="font-family:var(--font-display); font-size:var(--text-sm);
+                     color:var(--accent-cyan); margin:0 0 var(--spacing-sm) 0;
+                     text-transform:uppercase; letter-spacing:0.08em;">
+            Rechercher une série iRacing
+          </h4>
+          <div style="display:flex; gap:var(--spacing-sm); align-items:center;">
+            <input id="iracing-search-input" type="text" placeholder="Ex: Ferrari 296, GT3, Porsche Cup..."
+                   style="flex:1; padding:var(--spacing-xs) var(--spacing-sm);
+                          background:var(--bg-input); color:var(--text-primary);
+                          border:1px solid var(--border); border-radius:var(--radius-md);
+                          font-family:var(--font-body); font-size:var(--text-sm);
+                          outline:none; transition:border-color 150ms ease;"
+                   onfocus="this.style.borderColor='var(--accent-cyan)'"
+                   onblur="this.style.borderColor='var(--border)'"
+                   onkeydown="if(event.key==='Enter') SeriesPage.searchIRacing()" />
+            <button id="iracing-search-btn" onclick="SeriesPage.searchIRacing()"
+                    style="padding:var(--spacing-xs) var(--spacing-md);
+                           background:var(--accent-cyan-dim); color:var(--accent-cyan);
+                           border:1px solid var(--accent-cyan); border-radius:var(--radius-md);
+                           font-family:var(--font-data); font-size:var(--text-xs);
+                           cursor:pointer; white-space:nowrap; transition:all 150ms ease;">
+              Rechercher
+            </button>
+            <span id="iracing-search-status" style="font-family:var(--font-data);
+                       font-size:var(--text-xs); color:var(--text-muted);"></span>
+          </div>
+          <!-- Search results -->
+          <div id="iracing-search-results" style="margin-top:var(--spacing-sm);"></div>
+        </div>
+
         <!-- Filter bar -->
         <div style="display:flex; flex-wrap:wrap; gap:var(--spacing-sm);
                     align-items:center; margin-bottom:var(--spacing-lg);
@@ -298,10 +337,159 @@ const SeriesPage = (() => {
     _applyFilters();
   }
 
+  /**
+   * Search for a series on iRacing by name.
+   */
+  async function searchIRacing() {
+    if (_searching) return;
+
+    const input = document.getElementById('iracing-search-input');
+    const statusEl = document.getElementById('iracing-search-status');
+    const resultsEl = document.getElementById('iracing-search-results');
+    const query = (input?.value || '').trim();
+
+    if (query.length < 2) {
+      if (statusEl) { statusEl.textContent = 'Min. 2 caractères'; statusEl.style.color = 'var(--accent-orange)'; }
+      return;
+    }
+
+    _searching = true;
+    if (statusEl) { statusEl.textContent = 'Recherche...'; statusEl.style.color = 'var(--accent-cyan)'; }
+    if (resultsEl) resultsEl.innerHTML = '';
+
+    try {
+      const result = await api.searchSeries(query);
+
+      if (!result || !result.success || !result.results) {
+        if (statusEl) { statusEl.textContent = result?.message || 'Erreur'; statusEl.style.color = 'var(--accent-red)'; }
+        return;
+      }
+
+      const results = result.results;
+      if (statusEl) {
+        statusEl.textContent = `${results.length} résultat(s)` +
+          (result.api_count > 0 ? ` (${result.local_count} local + ${result.api_count} iRacing API)` : '');
+        statusEl.style.color = results.length > 0 ? 'var(--accent-green)' : 'var(--text-muted)';
+      }
+
+      if (resultsEl) {
+        if (results.length === 0) {
+          resultsEl.innerHTML = `<p style="color:var(--text-muted); font-family:var(--font-data);
+                                           font-size:var(--text-xs); margin:var(--spacing-xs) 0 0 0;">
+            Aucun résultat. Essayez "Sync iRacing" pour importer le catalogue complet.</p>`;
+        } else {
+          resultsEl.innerHTML = `
+            <table style="width:100%; border-collapse:collapse; margin-top:var(--spacing-xs);">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <th style="padding:4px 8px; text-align:left; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">ID</th>
+                  <th style="padding:4px 8px; text-align:left; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">Nom</th>
+                  <th style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">Cat.</th>
+                  <th style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">Licence</th>
+                  <th style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">Source</th>
+                  <th style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                             font-size:var(--text-xs); color:var(--text-muted);">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${results.map((s) => {
+                  const id = s.iracing_series_id;
+                  const isFav = s.is_favorite;
+                  const sourceLabel = s.source === 'local' ? 'Local' : 'iRacing';
+                  const sourceColor = s.source === 'local' ? 'var(--accent-green)' : 'var(--accent-cyan)';
+                  const favLabel = isFav ? 'Favori' : 'Ajouter';
+                  const favBg = isFav ? 'var(--accent-yellow-dim, rgba(255,255,0,0.1))' : 'var(--accent-cyan-dim)';
+                  const favColor = isFav ? 'var(--accent-yellow)' : 'var(--accent-cyan)';
+                  const favBorder = isFav ? 'var(--accent-yellow)' : 'var(--accent-cyan)';
+                  const onclick = isFav
+                    ? `App.navigate('series-detail/${id}')`
+                    : `SeriesPage.addSeriesFromSearch(${id}, '${(s.series_name || '').replace(/'/g, "\\'")}', '${s.category || ''}', '${s.license_group || ''}')`;
+
+                  return `<tr style="border-bottom:1px solid var(--border);"
+                              onmouseenter="this.style.background='var(--bg-card-hover, rgba(255,255,255,0.02))'"
+                              onmouseleave="this.style.background='transparent'">
+                    <td style="padding:4px 8px; font-family:var(--font-data); font-size:var(--text-xs);
+                               color:var(--text-muted);">${id}</td>
+                    <td style="padding:4px 8px; font-family:var(--font-data); font-size:var(--text-sm);
+                               color:var(--text-primary); cursor:pointer;"
+                        onclick="App.navigate('series-detail/${id}')">${s.series_name || '--'}</td>
+                    <td style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                               font-size:var(--text-xs); color:var(--text-secondary);">${s.category || '--'}</td>
+                    <td style="padding:4px 8px; text-align:center; font-family:var(--font-data);
+                               font-size:var(--text-xs); color:var(--text-secondary);">${s.license_group || '--'}</td>
+                    <td style="padding:4px 8px; text-align:center;">
+                      <span style="font-family:var(--font-data); font-size:10px; color:${sourceColor};">${sourceLabel}</span>
+                    </td>
+                    <td style="padding:4px 8px; text-align:center;">
+                      <button id="search-add-btn-${id}" onclick="${onclick}"
+                              style="padding:2px 10px; background:${favBg}; color:${favColor};
+                                     border:1px solid ${favBorder}; border-radius:var(--radius-full);
+                                     font-family:var(--font-data); font-size:10px;
+                                     cursor:pointer; transition:all 150ms ease;">
+                        ${favLabel}
+                      </button>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>`;
+        }
+      }
+
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = 'Erreur: ' + err.message; statusEl.style.color = 'var(--accent-red)'; }
+    } finally {
+      _searching = false;
+    }
+  }
+
+  /**
+   * Add a series from search results as favorite.
+   * @param {number} seriesId
+   * @param {string} seriesName
+   * @param {string} category
+   * @param {string} licenseGroup
+   */
+  async function addSeriesFromSearch(seriesId, seriesName, category, licenseGroup) {
+    const btn = document.getElementById(`search-add-btn-${seriesId}`);
+    if (btn) { btn.textContent = '...'; btn.disabled = true; }
+
+    try {
+      const result = await api.post('series/favorites', {
+        series_id: seriesId,
+        is_favorite: true,
+        series_name: seriesName,
+        category: category,
+        license_group: licenseGroup,
+      });
+
+      if (result && result.success) {
+        if (btn) {
+          btn.textContent = 'Favori';
+          btn.style.background = 'var(--accent-yellow-dim, rgba(255,255,0,0.1))';
+          btn.style.color = 'var(--accent-yellow)';
+          btn.style.borderColor = 'var(--accent-yellow)';
+          btn.onclick = () => App.navigate(`series-detail/${seriesId}`);
+        }
+      } else {
+        if (btn) { btn.textContent = 'Erreur'; btn.style.color = 'var(--accent-red)'; }
+      }
+    } catch (err) {
+      if (btn) { btn.textContent = 'Erreur'; btn.style.color = 'var(--accent-red)'; }
+    }
+  }
+
   return {
     render,
     syncFromIRacing,
     setLicense,
     setSearch,
+    searchIRacing,
+    addSeriesFromSearch,
   };
 })();

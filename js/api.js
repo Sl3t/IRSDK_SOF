@@ -244,6 +244,13 @@ const api = (() => {
    */
   const fetchSeriesSessions = (seriesId) => post('series/fetch-sessions', { series_id: seriesId });
 
+  /**
+   * Search for iRacing series by name (local DB + iRacing API).
+   * @param {string} query - Search query (min 2 chars)
+   * @returns {Promise<object|null>}
+   */
+  const searchSeries = (query) => post('series/search', { query });
+
   // =========================================================================
   // SOF / Decision endpoints
   // =========================================================================
@@ -382,6 +389,7 @@ const api = (() => {
     getSeriesDetail,
     updateSeries,
     fetchSeriesSessions,
+    searchSeries,
     calculateSOF,
     evaluateDecision,
     getMyProfile,
